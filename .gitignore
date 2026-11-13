@@ -1,0 +1,5 @@
+capri_config.json
+cache/
+capri_voz.mp3
+.venv/
+__pycache__/

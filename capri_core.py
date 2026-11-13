@@ -965,8 +965,104 @@ from urllib.parse import quote_plus
 import subprocess
 from urllib.parse import quote_plus
 
+# Variável global que registra se a Capri já iniciou uma sessão do YouTube
+JA_ABRIU_YOUTUBE = False
+
+
+def _obter_titulo_janela(hwnd: int) -> str:
+    """Retorna o título atual de uma janela do Windows pelo seu identificador (HWND)."""
+    tamanho = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+    if tamanho <= 0:
+        return ""
+    buffer = ctypes.create_unicode_buffer(tamanho + 1)
+    ctypes.windll.user32.GetWindowTextW(hwnd, buffer, tamanho + 1)
+    return buffer.value.lower()
+
+
+def encontrar_janela_youtube_firefox() -> tuple[int, bool]:
+    """
+    Procura se o Firefox está aberto com o YouTube.
+    Retorna: (hwnd_da_janela, True se a aba ativa já for o YouTube ou False se estiver em outra aba).
+    """
+    janelas_yt = []
+    janelas_ff = []
+
+    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+
+    def _callback(hwnd, lParam):
+        if ctypes.windll.user32.IsWindowVisible(hwnd):
+            titulo = _obter_titulo_janela(hwnd)
+            if "firefox" in titulo or "mozilla" in titulo:
+                if "youtube" in titulo:
+                    janelas_yt.append(hwnd)
+                else:
+                    janelas_ff.append(hwnd)
+        return True
+
+    ctypes.windll.user32.EnumWindows(WNDENUMPROC(_callback), 0)
+
+    if janelas_yt:
+        return janelas_yt[0], True
+    if janelas_ff and JA_ABRIU_YOUTUBE:
+        return janelas_ff[0], False
+    return 0, False
+
+
+def _enviar_atalho_teclado(vk_modificador: int, vk_tecla: int):
+    """Pressiona uma combinação de teclas (ex: Ctrl+L, Ctrl+V, Ctrl+PageDown)."""
+    ctypes.windll.user32.keybd_event(vk_modificador, 0, 0, 0)
+    ctypes.windll.user32.keybd_event(vk_tecla, 0, 0, 0)
+    time.sleep(0.03)
+    ctypes.windll.user32.keybd_event(vk_tecla, 0, 2, 0)
+    ctypes.windll.user32.keybd_event(vk_modificador, 0, 2, 0)
+
+
+def _navegar_na_aba_atual_firefox(hwnd: int, ja_na_aba_yt: bool, url_destino: str) -> bool:
+    """Foca a aba do YouTube já aberta no Firefox e substitui o endereço pela nova música."""
+    try:
+        # 1. Restaura a janela caso esteja minimizada e traz o Firefox para frente
+        if ctypes.windll.user32.IsIconic(hwnd):
+            ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+
+        # Libera a permissão de foco do Windows simulando um toque rápido na tecla Alt (0x12)
+        ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0x12, 0, 2, 0)
+        ctypes.windll.user32.SetForegroundWindow(hwnd)
+        time.sleep(0.18)
+
+        # 2. Se o usuário estava em outra aba do Firefox, procura a aba do YouTube (Ctrl + PageDown)
+        if not ja_na_aba_yt:
+            achou_aba = False
+            for _ in range(10):
+                if "youtube" in _obter_titulo_janela(hwnd):
+                    achou_aba = True
+                    break
+                _enviar_atalho_teclado(0x11, 0x22)  # 0x11 = Ctrl, 0x22 = PageDown (Próxima aba)
+                time.sleep(0.08)
+
+            if not achou_aba and "youtube" not in _obter_titulo_janela(hwnd):
+                return False
+
+        # 3. Copia a URL da música nova para a área de transferência do Windows
+        subprocess.run(["clip"], input=url_destino.strip(), text=True, check=True)
+
+        # 4. Seleciona a barra de endereço da aba atual (Ctrl+L), cola (Ctrl+V) e aperta Enter (0x0D)
+        _enviar_atalho_teclado(0x11, 0x4C)  # Ctrl + L
+        time.sleep(0.08)
+        _enviar_atalho_teclado(0x11, 0x56)  # Ctrl + V
+        time.sleep(0.06)
+        ctypes.windll.user32.keybd_event(0x0D, 0, 0, 0)  # Enter
+        ctypes.windll.user32.keybd_event(0x0D, 0, 2, 0)
+        return True
+    except Exception as e:
+        print(f"[Aviso ao trocar música na aba atual]: {e}")
+        return False
+
+
 def tocar_musica_youtube_firefox(nome_musica: str) -> str:
-    """Busca o primeiro vídeo correspondente no YouTube e abre direto no Firefox para tocar."""
+    """Se já houver uma aba do YouTube aberta no Firefox, troca a música nela; senão, abre uma nova."""
+    global JA_ABRIU_YOUTUBE
+
     termo = quote_plus(nome_musica.strip())
     url_busca = f"https://www.youtube.com/results?search_query={termo}"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -974,13 +1070,21 @@ def tocar_musica_youtube_firefox(nome_musica: str) -> str:
     url_final = url_busca
     try:
         resp = requests.get(url_busca, headers=headers, timeout=8)
-        # Extrai o ID do primeiro vídeo dos resultados para já abrir dando play
         ids = re.findall(r"watch\?v=([a-zA-Z0-9_-]{11})", resp.text)
         if ids:
-            url_final = f"https://www.youtube.com/watch?v={ids[0]}"
+            url_final = f"https://www.youtube.com/watch?v={ids[0]}&autoplay=1"
     except Exception as e:
         print(f"[Aviso busca YouTube]: {e}")
 
+    # Verifica se já existe uma janela do Firefox com o YouTube aberto
+    hwnd_ff, ja_na_aba_yt = encontrar_janela_youtube_firefox()
+    if hwnd_ff:
+        trocou_na_mesma_aba = _navegar_na_aba_atual_firefox(hwnd_ff, ja_na_aba_yt, url_final)
+        if trocou_na_mesma_aba:
+            JA_ABRIU_YOUTUBE = True
+            return f"Trocando a música atual para {nome_musica}."
+
+    # Se não havia nenhuma aba do YouTube aberta, abre a primeira vez normalmente
     try:
         cfg = carregar_configuracoes()
         caminho_firefox = cfg.get("apps", {}).get("firefox", {}).get("caminho_abrir", "")
@@ -990,11 +1094,10 @@ def tocar_musica_youtube_firefox(nome_musica: str) -> str:
         else:
             subprocess.Popen(f'start firefox "{url_final}"', shell=True)
             
+        JA_ABRIU_YOUTUBE = True
         return f"Colocando {nome_musica} para tocar no YouTube."
     except Exception as e:
         return f"Erro ao abrir o YouTube no Firefox: {str(e)}"
-    if ids:
-            url_final = f"https://www.youtube.com/watch?v={ids[0]}&autoplay=1"
 
 def controlar_midia_windows(acao: str) -> str:
     """Envia o sinal global de mídia do Windows (Play/Pause, Próxima ou Anterior) via ctypes."""
@@ -1207,25 +1310,45 @@ def processar_comando_usuario(comando: str, hud: CapriHUD, reconhecedor: sr.Reco
         falar(hud, "Beleza, qualquer coisa é só chamar.")
         return
 
-    # 1. MODO MÚSICA EM 2 ETAPAS: Você pede "coloque uma música" -> Ela pergunta qual -> Abre no Firefox
+    # 1. MODO MÚSICA EM 2 ETAPAS (Detecta se já há música aberta e troca na mesma aba)
     gatilhos_pedir_musica = [
         "coloque uma música", "coloca uma música", "colocar uma música",
         "toque uma música", "toca uma música", "tocar uma música",
-        "bota uma música", "coloca música", "coloque música", "tocar música"
+        "bota uma música", "coloca música", "coloque música", "tocar música",
+        "coloque outra música", "coloca outra música", "bota outra música", "outra música",
+        "trocar música", "troque a música", "troca a música",
+        "mudar música", "mude a música", "muda a música"
     ]
     if any(g in comando for g in gatilhos_pedir_musica):
-        falar(hud, "Qual música você quer ouvir?", usar_cache=True)
+        hwnd_existente, _ = encontrar_janela_youtube_firefox()
+        if hwnd_existente:
+            falar(hud, "Para qual música você quer trocar?", usar_cache=True)
+        else:
+            falar(hud, "Qual música você quer ouvir?", usar_cache=True)
+
         hud.atualizar_estado("QUAL MÚSICA?...", "#00FF66", "Diga o nome da música ou artista...")
         
         nome_musica = ouvir_microfone_com_hud(hud, reconhecedor, aguardando_comando=True)
         if nome_musica:
             print(f"🎵 Música solicitada: '{nome_musica}'")
-            hud.atualizar_estado("ABRINDO YOUTUBE...", "#00FF66", f"Tocando: \"{nome_musica}\"")
+            hud.atualizar_estado("CARREGANDO MÚSICA...", "#00FF66", f"Tocando: \"{nome_musica}\"")
             resposta_yt = tocar_musica_youtube_firefox(nome_musica)
             falar(hud, resposta_yt)
         else:
             falar(hud, "Não consegui ouvir o nome da música. Quando quiser é só pedir de novo.")
         return
+
+    # Caso você já fale o nome da música direto na mesma frase
+    for prefixo in [
+        "coloque a música ", "coloca a música ", "toque a música ", "toca a música ",
+        "tocar a música ", "troque para a música ", "mude para a música "
+    ]:
+        if prefixo in comando:
+            nome_direto = comando.split(prefixo, 1)[1].strip()
+            if nome_direto:
+                hud.atualizar_estado("CARREGANDO MÚSICA...", "#00FF66", f"Tocando: \"{nome_direto}\"")
+                falar(hud, tocar_musica_youtube_firefox(nome_direto))
+                return
 
     # Caso você já fale o nome da música direto (ex: "coloque a música After Dark")
     for prefixo in ["coloque a música ", "coloca a música ", "toque a música ", "toca a música ", "tocar a música "]:

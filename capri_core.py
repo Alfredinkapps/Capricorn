@@ -25,7 +25,10 @@ from google.genai import types
 from abrir_apps import abrir_aplicativo, verificar_abertura_rapida
 from fechar_apps import fechar_aplicativo, verificar_fechamento_rapido
 
-PASTA_PROJETO = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    PASTA_PROJETO = os.path.dirname(sys.executable)
+else:
+    PASTA_PROJETO = os.path.dirname(os.path.abspath(__file__))
 ARQUIVO_CONFIG = os.path.join(PASTA_PROJETO, "capri_config.json")
 VOZ_FALLBACK = "pt-BR-FranciscaNeural"
 
@@ -1060,31 +1063,33 @@ def _navegar_na_aba_atual_firefox(hwnd: int, ja_na_aba_yt: bool, url_destino: st
 
 
 def tocar_musica_youtube_firefox(nome_musica: str) -> str:
-    """Se já houver uma aba do YouTube aberta no Firefox, troca a música nela; senão, abre uma nova."""
+    """Se já houver uma aba do YouTube Music aberta no Firefox, troca a música nela; senão, abre uma nova."""
     global JA_ABRIU_YOUTUBE
 
-    termo = quote_plus(nome_musica.strip())
-    url_busca = f"https://www.youtube.com/results?search_query={termo}"
+    # Busca o ID da faixa e direciona para o player do YouTube Music
+    termo = quote_plus(f"{nome_musica.strip()} official audio")
+    url_busca_id = f"https://www.youtube.com/results?search_query={termo}"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
-    url_final = url_busca
+    # Caso não encontre ID direto, abre a página de busca do próprio YouTube Music
+    url_final = f"https://music.youtube.com/search?q={quote_plus(nome_musica.strip())}"
     try:
-        resp = requests.get(url_busca, headers=headers, timeout=8)
+        resp = requests.get(url_busca_id, headers=headers, timeout=8)
         ids = re.findall(r"watch\?v=([a-zA-Z0-9_-]{11})", resp.text)
         if ids:
-            url_final = f"https://www.youtube.com/watch?v={ids[0]}&autoplay=1"
+            url_final = f"https://music.youtube.com/watch?v={ids[0]}"
     except Exception as e:
-        print(f"[Aviso busca YouTube]: {e}")
+        print(f"[Aviso busca YouTube Music]: {e}")
 
-    # Verifica se já existe uma janela do Firefox com o YouTube aberto
+    # Verifica se já existe uma janela do Firefox com o YouTube Music aberto
     hwnd_ff, ja_na_aba_yt = encontrar_janela_youtube_firefox()
     if hwnd_ff:
         trocou_na_mesma_aba = _navegar_na_aba_atual_firefox(hwnd_ff, ja_na_aba_yt, url_final)
         if trocou_na_mesma_aba:
             JA_ABRIU_YOUTUBE = True
-            return f"Trocando a música atual para {nome_musica}."
+            return f"Trocando para {nome_musica} no YouTube Music."
 
-    # Se não havia nenhuma aba do YouTube aberta, abre a primeira vez normalmente
+    # Se não havia nenhuma aba aberta, inicia o YouTube Music pela primeira vez
     try:
         cfg = carregar_configuracoes()
         caminho_firefox = cfg.get("apps", {}).get("firefox", {}).get("caminho_abrir", "")
@@ -1095,9 +1100,9 @@ def tocar_musica_youtube_firefox(nome_musica: str) -> str:
             subprocess.Popen(f'start firefox "{url_final}"', shell=True)
             
         JA_ABRIU_YOUTUBE = True
-        return f"Colocando {nome_musica} para tocar no YouTube."
+        return f"Colocando {nome_musica} para tocar no YouTube Music."
     except Exception as e:
-        return f"Erro ao abrir o YouTube no Firefox: {str(e)}"
+        return f"Erro ao abrir o YouTube Music no Firefox: {str(e)}"
 
 def controlar_midia_windows(acao: str) -> str:
     """Envia o sinal global de mídia do Windows (Play/Pause, Próxima ou Anterior) via ctypes."""
@@ -1254,7 +1259,7 @@ def perguntar_gemini_com_pesquisa(pergunta: str, client, modelos: list, historic
     )
 
     # Mantém as últimas interações para ela lembrar do contexto da conversa
-    conteudos = list(historico[-6:]) + [pergunta]
+    conteudos = list(historico[-6:]) + [pergunta] 
 
     for modelo in modelos:
         # 1ª Tentativa: Com Pesquisa Google em tempo real ativada

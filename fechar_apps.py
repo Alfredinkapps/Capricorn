@@ -1,8 +1,14 @@
 import os
 import json
 import subprocess
+import sys
 
-ARQUIVO_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "capri_config.json")
+if getattr(sys, "frozen", False):
+    PASTA_BASE = os.path.dirname(sys.executable)
+else:
+    PASTA_BASE = os.path.dirname(os.path.abspath(__file__))
+
+ARQUIVO_CONFIG = os.path.join(PASTA_BASE, "capri_config.json")
 
 
 def carregar_apps_ativos() -> dict:
@@ -85,7 +91,7 @@ def verificar_fechamento_rapido(frase: str) -> str:
         for nav in ["firefox", "google chrome", "chrome", "brave", "edge"]:
             if nav in apps_ativos:
                 return fechar_aplicativo(nav)
-    if "vscode" in frase or "visual studio" in frase:
+    if any(v in frase for v in ["vscode", "vs code", "v s code", "visual studio", "visual code"]):
         for ide in ["visual studio code", "vscode"]:
             if ide in apps_ativos:
                 return fechar_aplicativo(ide)

@@ -1274,14 +1274,14 @@
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_distutils_hack\\override.py',
    'PYMODULE'),
-  ('_py_abc',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\_py_abc.py',
-   'PYMODULE'),
   ('_py_warnings',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\_py_warnings.py',
    'PYMODULE'),
   ('tracemalloc',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\tracemalloc.py',
+   'PYMODULE'),
+  ('_py_abc',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\_py_abc.py',
    'PYMODULE'),
   ('stringprep',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\stringprep.py',
@@ -6678,29 +6678,41 @@
   ('python314.dll',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\python314.dll',
    'BINARY'),
-  ('libwebp-7.dll',
+  ('libopus-0.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libwebp-7.dll',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libopus-0.dll',
    'BINARY'),
-  ('libwebpdemux-2.dll',
+  ('libpng16-16.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libwebpdemux-2.dll',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libpng16-16.dll',
    'BINARY'),
   ('libxmp.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libxmp.dll',
    'BINARY'),
-  ('libopus-0.dll',
+  ('SDL2_image.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libopus-0.dll',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\SDL2_image.dll',
    'BINARY'),
-  ('libogg-0.dll',
+  ('libopusfile-0.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libogg-0.dll',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libopusfile-0.dll',
    'BINARY'),
-  ('libpng16-16.dll',
+  ('libjpeg-62.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libpng16-16.dll',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libjpeg-62.dll',
+   'BINARY'),
+  ('portmidi.dll',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\portmidi.dll',
+   'BINARY'),
+  ('libtiff-5.dll',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libtiff-5.dll',
+   'BINARY'),
+  ('libwebpdemux-2.dll',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libwebpdemux-2.dll',
    'BINARY'),
   ('SDL2.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
@@ -6710,30 +6722,6 @@
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\SDL2_mixer.dll',
    'BINARY'),
-  ('SDL2_image.dll',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\SDL2_image.dll',
-   'BINARY'),
-  ('portmidi.dll',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\portmidi.dll',
-   'BINARY'),
-  ('libwavpack-1.dll',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libwavpack-1.dll',
-   'BINARY'),
-  ('libjpeg-62.dll',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libjpeg-62.dll',
-   'BINARY'),
-  ('libtiff-5.dll',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libtiff-5.dll',
-   'BINARY'),
-  ('libopusfile-0.dll',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libopusfile-0.dll',
-   'BINARY'),
   ('freetype.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\freetype.dll',
@@ -6742,9 +6730,17 @@
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\SDL2_ttf.dll',
    'BINARY'),
-  ('_sounddevice_data\\portaudio-binaries\\libportaudio32bit-asio.dll',
+  ('libogg-0.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio32bit-asio.dll',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libogg-0.dll',
+   'BINARY'),
+  ('libwavpack-1.dll',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libwavpack-1.dll',
+   'BINARY'),
+  ('libwebp-7.dll',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libwebp-7.dll',
    'BINARY'),
   ('_sounddevice_data\\portaudio-binaries\\libportaudioarm64-asio.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
@@ -6754,17 +6750,21 @@
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio32bit.dll',
    'BINARY'),
+  ('_sounddevice_data\\portaudio-binaries\\libportaudio64bit-asio.dll',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio64bit-asio.dll',
+   'BINARY'),
   ('_sounddevice_data\\portaudio-binaries\\libportaudioarm64.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudioarm64.dll',
    'BINARY'),
+  ('_sounddevice_data\\portaudio-binaries\\libportaudio32bit-asio.dll',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio32bit-asio.dll',
+   'BINARY'),
   ('_sounddevice_data\\portaudio-binaries\\libportaudio64bit.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio64bit.dll',
-   'BINARY'),
-  ('_sounddevice_data\\portaudio-binaries\\libportaudio64bit-asio.dll',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio64bit-asio.dll',
    'BINARY'),
   ('numpy.libs\\libscipy_openblas64_-ed4f167a5330424524f45258e7ca2c8d.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
@@ -7098,48 +7098,44 @@
   ('_tkinter.pyd',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\_tkinter.pyd',
    'EXTENSION'),
-  ('api-ms-win-crt-math-l1-1-0.dll',
+  ('api-ms-win-crt-stdio-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-crt-math-l1-1-0.dll',
+   'Toolkit\\api-ms-win-crt-stdio-l1-1-0.dll',
+   'BINARY'),
+  ('VCRUNTIME140.dll',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\VCRUNTIME140.dll',
+   'BINARY'),
+  ('api-ms-win-crt-process-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-crt-process-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-crt-environment-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-crt-environment-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-crt-heap-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-crt-heap-l1-1-0.dll',
-   'BINARY'),
-  ('VCRUNTIME140.dll',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\VCRUNTIME140.dll',
-   'BINARY'),
-  ('api-ms-win-crt-stdio-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-crt-stdio-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-crt-runtime-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-crt-runtime-l1-1-0.dll',
-   'BINARY'),
   ('api-ms-win-crt-time-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-crt-time-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-crt-locale-l1-1-0.dll',
+  ('api-ms-win-crt-heap-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-crt-locale-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-crt-string-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-crt-string-l1-1-0.dll',
+   'Toolkit\\api-ms-win-crt-heap-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-crt-conio-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-crt-conio-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-crt-process-l1-1-0.dll',
+  ('api-ms-win-crt-string-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-crt-process-l1-1-0.dll',
+   'Toolkit\\api-ms-win-crt-string-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-crt-math-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-crt-math-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-crt-runtime-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-crt-runtime-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-crt-filesystem-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
@@ -7149,9 +7145,9 @@
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-crt-convert-l1-1-0.dll',
    'BINARY'),
-  ('pygame\\libwebp-7.dll',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libwebp-7.dll',
+  ('api-ms-win-crt-locale-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-crt-locale-l1-1-0.dll',
    'BINARY'),
   ('pygame\\SDL2.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
@@ -7164,6 +7160,10 @@
   ('pygame\\libogg-0.dll',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libogg-0.dll',
+   'BINARY'),
+  ('pygame\\libwebp-7.dll',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\libwebp-7.dll',
    'BINARY'),
   ('api-ms-win-crt-utility-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
@@ -7182,12 +7182,12 @@
   ('libssl-3.dll',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\libssl-3.dll',
    'BINARY'),
-  ('python3.dll',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\python3.dll',
-   'BINARY'),
   ('api-ms-win-core-synch-l1-2-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-core-synch-l1-2-0.dll',
+   'BINARY'),
+  ('python3.dll',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\python3.dll',
    'BINARY'),
   ('libffi-8.dll',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\libffi-8.dll',
@@ -7208,14 +7208,14 @@
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\freetype.dll',
    'BINARY'),
-  ('libtommath.dll',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\libtommath.dll',
+  ('tcl9tk90.dll',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\tcl9tk90.dll',
    'BINARY'),
   ('tcl90.dll',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\tcl90.dll',
    'BINARY'),
-  ('tcl9tk90.dll',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\tcl9tk90.dll',
+  ('libtommath.dll',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\libtommath.dll',
    'BINARY'),
   ('ucrtbase.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
@@ -7224,33 +7224,9 @@
   ('zlib1.dll',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\DLLs\\zlib1.dll',
    'BINARY'),
-  ('api-ms-win-core-synch-l1-1-0.dll',
+  ('api-ms-win-core-heap-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-synch-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-file-l1-2-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-file-l1-2-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-profile-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-profile-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-timezone-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-timezone-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-processthreads-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-processthreads-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-string-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-string-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-errorhandling-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-errorhandling-l1-1-0.dll',
+   'Toolkit\\api-ms-win-core-heap-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-core-memory-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
@@ -7260,41 +7236,45 @@
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-core-handle-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-core-util-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-util-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-processthreads-l1-1-1.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-processthreads-l1-1-1.dll',
-   'BINARY'),
   ('api-ms-win-core-sysinfo-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-core-sysinfo-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-core-heap-l1-1-0.dll',
+  ('api-ms-win-core-file-l1-2-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-heap-l1-1-0.dll',
+   'Toolkit\\api-ms-win-core-file-l1-2-0.dll',
    'BINARY'),
-  ('api-ms-win-core-fibers-l1-1-0.dll',
+  ('api-ms-win-core-interlocked-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-fibers-l1-1-0.dll',
+   'Toolkit\\api-ms-win-core-interlocked-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-core-file-l1-1-0.dll',
+  ('api-ms-win-core-datetime-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-file-l1-1-0.dll',
+   'Toolkit\\api-ms-win-core-datetime-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-core-localization-l1-2-0.dll',
+  ('api-ms-win-core-util-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-localization-l1-2-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-processenvironment-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-processenvironment-l1-1-0.dll',
+   'Toolkit\\api-ms-win-core-util-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-core-debug-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-core-debug-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-processthreads-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-processthreads-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-namedpipe-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-namedpipe-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-profile-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-profile-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-localization-l1-2-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-localization-l1-2-0.dll',
    'BINARY'),
   ('api-ms-win-core-file-l2-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
@@ -7304,104 +7284,116 @@
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-core-rtlsupport-l1-1-0.dll',
    'BINARY'),
-  ('api-ms-win-core-interlocked-l1-1-0.dll',
+  ('api-ms-win-core-errorhandling-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-interlocked-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-namedpipe-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-namedpipe-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-datetime-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-datetime-l1-1-0.dll',
-   'BINARY'),
-  ('api-ms-win-core-console-l1-1-0.dll',
-   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
-   'Toolkit\\api-ms-win-core-console-l1-1-0.dll',
+   'Toolkit\\api-ms-win-core-errorhandling-l1-1-0.dll',
    'BINARY'),
   ('api-ms-win-core-libraryloader-l1-1-0.dll',
    'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
    'Toolkit\\api-ms-win-core-libraryloader-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-timezone-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-timezone-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-processthreads-l1-1-1.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-processthreads-l1-1-1.dll',
+   'BINARY'),
+  ('api-ms-win-core-file-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-file-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-string-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-string-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-synch-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-synch-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-fibers-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-fibers-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-processenvironment-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-processenvironment-l1-1-0.dll',
+   'BINARY'),
+  ('api-ms-win-core-console-l1-1-0.dll',
+   'C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance '
+   'Toolkit\\api-ms-win-core-console-l1-1-0.dll',
    'BINARY')],
  [],
  [],
- [('cryptography-50.0.2.dist-info\\sboms\\cryptography-rust.cyclonedx.json',
+ [('cryptography-50.0.2.dist-info\\licenses\\LICENSE.APACHE',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\sboms\\cryptography-rust.cyclonedx.json',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\licenses\\LICENSE.APACHE',
    'DATA'),
   ('cryptography-50.0.2.dist-info\\sboms\\sbom.json',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\sboms\\sbom.json',
    'DATA'),
-  ('cryptography-50.0.2.dist-info\\licenses\\LICENSE.APACHE',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\licenses\\LICENSE.APACHE',
-   'DATA'),
   ('cryptography-50.0.2.dist-info\\METADATA',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\METADATA',
-   'DATA'),
-  ('cryptography-50.0.2.dist-info\\RECORD',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\RECORD',
    'DATA'),
   ('cryptography-50.0.2.dist-info\\WHEEL',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\WHEEL',
    'DATA'),
+  ('cryptography-50.0.2.dist-info\\sboms\\cryptography-rust.cyclonedx.json',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\sboms\\cryptography-rust.cyclonedx.json',
+   'DATA'),
   ('cryptography-50.0.2.dist-info\\INSTALLER',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\INSTALLER',
    'DATA'),
-  ('cryptography-50.0.2.dist-info\\licenses\\LICENSE',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\licenses\\LICENSE',
-   'DATA'),
   ('cryptography-50.0.2.dist-info\\licenses\\LICENSE.BSD',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\licenses\\LICENSE.BSD',
+   'DATA'),
+  ('cryptography-50.0.2.dist-info\\RECORD',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\RECORD',
+   'DATA'),
+  ('cryptography-50.0.2.dist-info\\licenses\\LICENSE',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\cryptography-50.0.2.dist-info\\licenses\\LICENSE',
    'DATA'),
   ('setuptools\\_vendor\\jaraco\\text\\Lorem ipsum.txt',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\setuptools\\_vendor\\jaraco\\text\\Lorem '
    'ipsum.txt',
    'DATA'),
-  ('certifi\\cacert.pem',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\certifi\\cacert.pem',
-   'DATA'),
   ('certifi\\py.typed',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\certifi\\py.typed',
    'DATA'),
-  ('pygame\\freesansbold.ttf',
+  ('certifi\\cacert.pem',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\freesansbold.ttf',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\certifi\\cacert.pem',
    'DATA'),
   ('pygame\\pygame_icon.bmp',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\pygame_icon.bmp',
    'DATA'),
+  ('pygame\\freesansbold.ttf',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pygame\\freesansbold.ttf',
+   'DATA'),
+  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\noisedict',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\noisedict',
+   'DATA'),
+  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\feat.params',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\feat.params',
+   'DATA'),
   ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\sendump',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\sendump',
-   'DATA'),
-  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\transition_matrices',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\transition_matrices',
-   'DATA'),
-  ('speech_recognition\\flac-linux-x86',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\flac-linux-x86',
-   'DATA'),
-  ('speech_recognition\\version.txt',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\version.txt',
-   'DATA'),
-  ('speech_recognition\\flac-linux-x86_64',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\flac-linux-x86_64',
    'DATA'),
   ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\README',
    'C:\\Users\\4lfr3\\Github projetos e '
@@ -7411,37 +7403,45 @@
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\mdef',
    'DATA'),
-  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\means',
+  ('speech_recognition\\flac-mac',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\means',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\flac-mac',
    'DATA'),
-  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\noisedict',
+  ('speech_recognition\\flac-linux-x86_64',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\noisedict',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\flac-linux-x86_64',
    'DATA'),
   ('speech_recognition\\pocketsphinx-data\\en-US\\LICENSE.txt',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\LICENSE.txt',
    'DATA'),
-  ('speech_recognition\\flac-mac',
+  ('speech_recognition\\flac-linux-x86',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\flac-mac',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\flac-linux-x86',
    'DATA'),
-  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\feat.params',
+  ('speech_recognition\\pocketsphinx-data\\en-US\\language-model.lm.bin',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\feat.params',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\language-model.lm.bin',
    'DATA'),
-  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\variances',
+  ('speech_recognition\\version.txt',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\variances',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\version.txt',
    'DATA'),
   ('speech_recognition\\pocketsphinx-data\\en-US\\pronounciation-dictionary.dict',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\pronounciation-dictionary.dict',
    'DATA'),
-  ('speech_recognition\\pocketsphinx-data\\en-US\\language-model.lm.bin',
+  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\means',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\language-model.lm.bin',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\means',
+   'DATA'),
+  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\transition_matrices',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\transition_matrices',
+   'DATA'),
+  ('speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\variances',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\pocketsphinx-data\\en-US\\acoustic-model\\variances',
    'DATA'),
   ('_sounddevice_data\\portaudio-binaries\\README.md',
    'C:\\Users\\4lfr3\\Github projetos e '
@@ -7451,57 +7451,89 @@
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\_sounddevice_data\\portaudio-binaries\\libportaudio.dylib',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\linalg\\lapack_lite\\LICENSE.txt',
+  ('pydantic-2.14.3.dist-info\\RECORD',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\linalg\\lapack_lite\\LICENSE.txt',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\RECORD',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\entry_points.txt',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\entry_points.txt',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\INSTALLER',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\INSTALLER',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\npysort\\x86-simd-sort\\LICENSE.md',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\npysort\\x86-simd-sort\\LICENSE.md',
+   'DATA'),
+  ('websockets-17.4.dist-info\\RECORD',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\RECORD',
    'DATA'),
   ('httpcore2-2.16.0.dist-info\\WHEEL',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\WHEEL',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\multiarray\\dragon4_LICENSE.txt',
+  ('attrs-26.1.0.dist-info\\METADATA',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\multiarray\\dragon4_LICENSE.txt',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\METADATA',
    'DATA'),
-  ('websockets-17.4.dist-info\\licenses\\LICENSE',
+  ('httpx2-2.16.0.dist-info\\RECORD',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\licenses\\LICENSE',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\RECORD',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\ma\\LICENSE',
+  ('attrs-26.1.0.dist-info\\RECORD',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\ma\\LICENSE',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\RECORD',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\LICENSE.md',
+  ('pydantic-2.14.3.dist-info\\WHEEL',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\LICENSE.md',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\WHEEL',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\LICENSE.txt',
+  ('httpx2-2.16.0.dist-info\\WHEEL',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\LICENSE.txt',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\WHEEL',
    'DATA'),
-  ('httpx2-2.16.0.dist-info\\entry_points.txt',
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\include\\numpy\\libdivide\\LICENSE.txt',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\entry_points.txt',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\include\\numpy\\libdivide\\LICENSE.txt',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\umath\\svml\\LICENSE',
+  ('httpcore2-2.16.0.dist-info\\RECORD',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\umath\\svml\\LICENSE',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\RECORD',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\DELVEWHEEL',
+  ('httpcore2-2.16.0.dist-info\\licenses\\LICENSE.md',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\DELVEWHEEL',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\licenses\\LICENSE.md',
    'DATA'),
-  ('pydantic-2.14.3.dist-info\\licenses\\LICENSE',
+  ('httpcore2-2.16.0.dist-info\\INSTALLER',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\licenses\\LICENSE',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\INSTALLER',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\RECORD',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\RECORD',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\common\\pythoncapi-compat\\COPYING',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\common\\pythoncapi-compat\\COPYING',
    'DATA'),
   ('websockets-17.4.dist-info\\top_level.txt',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\top_level.txt',
    'DATA'),
-  ('httpcore2-2.16.0.dist-info\\INSTALLER',
+  ('httpx2-2.16.0.dist-info\\licenses\\LICENSE.md',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\INSTALLER',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\licenses\\LICENSE.md',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\DELVEWHEEL',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\DELVEWHEEL',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\linalg\\lapack_lite\\LICENSE.txt',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\linalg\\lapack_lite\\LICENSE.txt',
    'DATA'),
   ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\philox\\LICENSE.md',
    'C:\\Users\\4lfr3\\Github projetos e '
@@ -7511,187 +7543,137 @@
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\splitmix64\\LICENSE.md',
    'DATA'),
-  ('pydantic-2.14.3.dist-info\\INSTALLER',
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\umath\\svml\\LICENSE',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\INSTALLER',
-   'DATA'),
-  ('attrs-26.1.0.dist-info\\licenses\\LICENSE',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\licenses\\LICENSE',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\include\\numpy\\libdivide\\LICENSE.txt',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\include\\numpy\\libdivide\\LICENSE.txt',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\REQUESTED',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\REQUESTED',
-   'DATA'),
-  ('pydantic-2.14.3.dist-info\\WHEEL',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\WHEEL',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\distributions\\LICENSE.md',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\distributions\\LICENSE.md',
-   'DATA'),
-  ('httpcore2-2.16.0.dist-info\\METADATA',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\METADATA',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\pcg64\\LICENSE.md',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\pcg64\\LICENSE.md',
-   'DATA'),
-  ('attrs-26.1.0.dist-info\\RECORD',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\RECORD',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\INSTALLER',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\INSTALLER',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\highway\\LICENSE',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\highway\\LICENSE',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\WHEEL',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\WHEEL',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\entry_points.txt',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\entry_points.txt',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\common\\pythoncapi-compat\\COPYING',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\common\\pythoncapi-compat\\COPYING',
-   'DATA'),
-  ('websockets-17.4.dist-info\\METADATA',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\METADATA',
-   'DATA'),
-  ('attrs-26.1.0.dist-info\\METADATA',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\METADATA',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\sfc64\\LICENSE.md',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\sfc64\\LICENSE.md',
-   'DATA'),
-  ('websockets-17.4.dist-info\\WHEEL',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\WHEEL',
-   'DATA'),
-  ('httpcore2-2.16.0.dist-info\\licenses\\LICENSE.md',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\licenses\\LICENSE.md',
-   'DATA'),
-  ('httpx2-2.16.0.dist-info\\METADATA',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\METADATA',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\mt19937\\LICENSE.md',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\mt19937\\LICENSE.md',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\npysort\\x86-simd-sort\\LICENSE.md',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\npysort\\x86-simd-sort\\LICENSE.md',
-   'DATA'),
-  ('attrs-26.1.0.dist-info\\WHEEL',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\WHEEL',
-   'DATA'),
-  ('httpx2-2.16.0.dist-info\\WHEEL',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\WHEEL',
-   'DATA'),
-  ('httpcore2-2.16.0.dist-info\\RECORD',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\RECORD',
-   'DATA'),
-  ('numpy-2.5.4.dist-info\\METADATA',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\METADATA',
-   'DATA'),
-  ('pydantic-2.14.3.dist-info\\RECORD',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\RECORD',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\umath\\svml\\LICENSE',
    'DATA'),
   ('websockets-17.4.dist-info\\entry_points.txt',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\entry_points.txt',
    'DATA'),
-  ('websockets-17.4.dist-info\\INSTALLER',
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\ma\\LICENSE',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\INSTALLER',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\ma\\LICENSE',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\licenses\\numpy\\fft\\pocketfft\\LICENSE.md',
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\distributions\\LICENSE.md',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\fft\\pocketfft\\LICENSE.md',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\distributions\\LICENSE.md',
    'DATA'),
-  ('websockets-17.4.dist-info\\RECORD',
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\sfc64\\LICENSE.md',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\RECORD',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\sfc64\\LICENSE.md',
    'DATA'),
-  ('httpx2-2.16.0.dist-info\\licenses\\LICENSE.md',
+  ('numpy-2.5.4.dist-info\\licenses\\LICENSE.txt',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\licenses\\LICENSE.md',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\LICENSE.txt',
    'DATA'),
-  ('pydantic-2.14.3.dist-info\\METADATA',
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\LICENSE.md',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\METADATA',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\LICENSE.md',
    'DATA'),
-  ('httpx2-2.16.0.dist-info\\RECORD',
+  ('websockets-17.4.dist-info\\licenses\\LICENSE',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\RECORD',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\licenses\\LICENSE',
    'DATA'),
-  ('httpx2-2.16.0.dist-info\\INSTALLER',
+  ('websockets-17.4.dist-info\\METADATA',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\INSTALLER',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\METADATA',
    'DATA'),
-  ('numpy-2.5.4.dist-info\\RECORD',
+  ('httpcore2-2.16.0.dist-info\\METADATA',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\RECORD',
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpcore2-2.16.0.dist-info\\METADATA',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\multiarray\\dragon4_LICENSE.txt',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\multiarray\\dragon4_LICENSE.txt',
+   'DATA'),
+  ('httpx2-2.16.0.dist-info\\entry_points.txt',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\entry_points.txt',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\WHEEL',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\WHEEL',
    'DATA'),
   ('attrs-26.1.0.dist-info\\INSTALLER',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\INSTALLER',
    'DATA'),
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\mt19937\\LICENSE.md',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\mt19937\\LICENSE.md',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\METADATA',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\METADATA',
+   'DATA'),
+  ('pydantic-2.14.3.dist-info\\METADATA',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\METADATA',
+   'DATA'),
+  ('httpx2-2.16.0.dist-info\\INSTALLER',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\INSTALLER',
+   'DATA'),
+  ('httpx2-2.16.0.dist-info\\METADATA',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\httpx2-2.16.0.dist-info\\METADATA',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\REQUESTED',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\REQUESTED',
+   'DATA'),
+  ('websockets-17.4.dist-info\\INSTALLER',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\INSTALLER',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\highway\\LICENSE',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\_core\\src\\highway\\LICENSE',
+   'DATA'),
+  ('pydantic-2.14.3.dist-info\\INSTALLER',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\INSTALLER',
+   'DATA'),
+  ('pydantic-2.14.3.dist-info\\licenses\\LICENSE',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\pydantic-2.14.3.dist-info\\licenses\\LICENSE',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\fft\\pocketfft\\LICENSE.md',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\fft\\pocketfft\\LICENSE.md',
+   'DATA'),
+  ('websockets-17.4.dist-info\\WHEEL',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\websockets-17.4.dist-info\\WHEEL',
+   'DATA'),
+  ('numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\pcg64\\LICENSE.md',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\numpy-2.5.4.dist-info\\licenses\\numpy\\random\\src\\pcg64\\LICENSE.md',
+   'DATA'),
+  ('attrs-26.1.0.dist-info\\licenses\\LICENSE',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\licenses\\LICENSE',
+   'DATA'),
+  ('attrs-26.1.0.dist-info\\WHEEL',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\attrs-26.1.0.dist-info\\WHEEL',
+   'DATA'),
   ('base_library.zip',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\build\\Capri\\base_library.zip',
    'DATA')],
- [('abc',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\abc.py',
+ [('stat',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\stat.py',
    'PYMODULE'),
-  ('codecs',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\codecs.py',
+  ('traceback',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\traceback.py',
    'PYMODULE'),
-  ('sre_constants',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\sre_constants.py',
+  ('sre_compile',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\sre_compile.py',
    'PYMODULE'),
-  ('posixpath',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\posixpath.py',
-   'PYMODULE'),
-  ('heapq',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\heapq.py',
-   'PYMODULE'),
-  ('_weakrefset',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\_weakrefset.py',
-   'PYMODULE'),
-  ('weakref',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\weakref.py',
-   'PYMODULE'),
-  ('ntpath',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\ntpath.py',
-   'PYMODULE'),
-  ('locale',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\locale.py',
-   'PYMODULE'),
-  ('linecache',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\linecache.py',
+  ('warnings',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\warnings.py',
    'PYMODULE'),
   ('enum',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\enum.py',
@@ -7699,17 +7681,65 @@
   ('genericpath',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\genericpath.py',
    'PYMODULE'),
-  ('functools',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\functools.py',
+  ('ntpath',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\ntpath.py',
    'PYMODULE'),
-  ('_collections_abc',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\_collections_abc.py',
+  ('weakref',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\weakref.py',
+   'PYMODULE'),
+  ('reprlib',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\reprlib.py',
+   'PYMODULE'),
+  ('sre_parse',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\sre_parse.py',
+   'PYMODULE'),
+  ('re._parser',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\re\\_parser.py',
+   'PYMODULE'),
+  ('re._constants',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\re\\_constants.py',
+   'PYMODULE'),
+  ('re._compiler',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\re\\_compiler.py',
+   'PYMODULE'),
+  ('re._casefix',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\re\\_casefix.py',
+   'PYMODULE'),
+  ('types',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\types.py',
+   'PYMODULE'),
+  ('abc',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\abc.py',
    'PYMODULE'),
   ('operator',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\operator.py',
    'PYMODULE'),
-  ('warnings',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\warnings.py',
+  ('_collections_abc',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\_collections_abc.py',
+   'PYMODULE'),
+  ('linecache',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\linecache.py',
+   'PYMODULE'),
+  ('sre_constants',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\sre_constants.py',
+   'PYMODULE'),
+  ('copyreg',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\copyreg.py',
+   'PYMODULE'),
+  ('keyword',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\keyword.py',
+   'PYMODULE'),
+  ('heapq',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\heapq.py',
+   'PYMODULE'),
+  ('locale',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\locale.py',
+   'PYMODULE'),
+  ('io',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\io.py',
+   'PYMODULE'),
+  ('_weakrefset',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\_weakrefset.py',
    'PYMODULE'),
   ('encodings.zlib_codec',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\encodings\\zlib_codec.py',
@@ -8080,44 +8110,14 @@
   ('encodings',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\encodings\\__init__.py',
    'PYMODULE'),
-  ('keyword',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\keyword.py',
+  ('codecs',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\codecs.py',
    'PYMODULE'),
-  ('re._parser',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\re\\_parser.py',
+  ('posixpath',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\posixpath.py',
    'PYMODULE'),
-  ('re._constants',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\re\\_constants.py',
-   'PYMODULE'),
-  ('re._compiler',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\re\\_compiler.py',
-   'PYMODULE'),
-  ('re._casefix',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\re\\_casefix.py',
-   'PYMODULE'),
-  ('sre_parse',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\sre_parse.py',
-   'PYMODULE'),
-  ('reprlib',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\reprlib.py',
-   'PYMODULE'),
-  ('io',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\io.py',
-   'PYMODULE'),
-  ('sre_compile',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\sre_compile.py',
-   'PYMODULE'),
-  ('traceback',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\traceback.py',
-   'PYMODULE'),
-  ('copyreg',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\copyreg.py',
-   'PYMODULE'),
-  ('stat',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\stat.py',
-   'PYMODULE'),
-  ('types',
-   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\types.py',
+  ('functools',
+   'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\functools.py',
    'PYMODULE'),
   ('collections',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\collections\\__init__.py',

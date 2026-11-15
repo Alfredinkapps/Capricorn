@@ -1,14 +1,5 @@
 import os
-import json
-import subprocess
-import sys
-
-if getattr(sys, "frozen", False):
-    PASTA_BASE = os.path.dirname(sys.executable)
-else:
-    PASTA_BASE = os.path.dirname(os.path.abspath(__file__))
-
-import os
+import re
 import sys
 import json
 import subprocess
@@ -16,13 +7,19 @@ import subprocess
 if getattr(sys, "frozen", False):
     PASTA_BASE = os.path.dirname(sys.executable)
 else:
-    PASTA_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    PASTA_ATUAL = os.path.dirname(os.path.abspath(__file__))
+    PASTA_BASE = os.path.dirname(PASTA_ATUAL) if os.path.basename(PASTA_ATUAL).lower() == "src" else PASTA_ATUAL
 
 ARQUIVO_CONFIG = os.path.join(PASTA_BASE, "capri_config.json")
 
 
+def _normalizar_nome(texto: str) -> str:
+    limpo = texto.lower().strip()
+    limpo = re.sub(r"([a-zA-Z])\s+(\d)", r"\1\2", limpo)
+    return re.sub(r"\s+", " ", limpo)
+
+
 def carregar_apps_ativos() -> dict:
-    """Retorna apenas os aplicativos que estão com o botão VERDE (ativo=True) nas configurações."""
     if not os.path.exists(ARQUIVO_CONFIG):
         return {}
     try:
@@ -35,79 +32,62 @@ def carregar_apps_ativos() -> dict:
 
 
 def fechar_aplicativo(nome_app: str) -> str:
-    """Fecha um aplicativo aberto no computador caso ele esteja autorizado nas configurações.
-    
-    Args:
-        nome_app: Nome do aplicativo que o usuário deseja fechar (ex: 'firefox', 'vscode', 'calculadora', 'discord').
-    """
-    alvo = nome_app.lower().strip()
+    alvo = _normalizar_nome(nome_app)
+    alvo_compacto = alvo.replace(" ", "")
     apps_ativos = carregar_apps_ativos()
 
-    apelidos = {
-        "navegador": ["firefox", "google chrome", "chrome", "microsoft edge", "opera", "brave"],
-        "vscode": ["visual studio code", "vscode", "code"],
-        "bloco de notas": ["bloco de notas", "notepad"],
-        "calculadora": ["calculadora", "calc"]
-    }
-
     chave_encontrada = None
-    if alvo in apps_ativos:
-        chave_encontrada = alvo
-    elif alvo in apelidos:
-        for op in apelidos[alvo]:
-            if op in apps_ativos:
-                chave_encontrada = op
-                break
-    else:
-        for k in apps_ativos.keys():
-            if alvo in k or k in alvo:
-                chave_encontrada = k
-                break
+    for chave, info in apps_ativos.items():
+        termos = [_normalizar_nome(chave), _normalizar_nome(info.get("nome", ""))] + [
+            _normalizar_nome(ap) for ap in info.get("apelidos", [])
+        ]
+        if alvo in termos or alvo_compacto in [t.replace(" ", "") for t in termos if t]:
+            chave_encontrada = chave
+            break
 
     if not chave_encontrada:
-        return f"O aplicativo {nome_app} está desativado nas configurações ou não foi encontrado."
+        return f"Não encontrei o aplicativo {nome_app} ativo para fechar."
 
     info = apps_ativos[chave_encontrada]
-    processo = info.get("processo_fechar", "")
+    exe = info.get("executavel", "")
     nome_exibicao = info.get("nome", chave_encontrada)
 
-    if not processo:
-        return f"Não foi possível identificar o executável de {nome_exibicao}."
+    if not exe and info.get("caminho_abrir", "").lower().endswith(".exe"):
+        exe = os.path.basename(info["caminho_abrir"])
 
-    try:
-        resultado = subprocess.run(
-            f'taskkill /F /IM "{processo}" /T',
-            shell=True,
-            capture_output=True,
-            text=True
-        )
-        if resultado.returncode == 0:
-            return f"Protocolo executado. O aplicativo {nome_exibicao} foi encerrado."
-        else:
-            return f"O aplicativo {nome_exibicao} não parece estar aberto no momento."
-    except Exception as e:
-        return f"Erro ao tentar fechar {nome_exibicao}: {str(e)}"
+    if not exe:
+        return f"Não sei qual é o processo executável de {nome_exibicao}."
+
+    subprocess.run(f'taskkill /F /IM "{exe}" /T', shell=True, creationflags=0x08000000)
+    return f"Encerrando {nome_exibicao}."
 
 
 def verificar_fechamento_rapido(frase: str) -> str:
-    """Verifica no Fast-Track se o usuário pediu para fechar algum app ativo."""
-    verbos_fechar = ["feche", "fechar", "fecha", "encerre", "encerrar", "finalizar", "mate"]
+    verbos_fechar = ["feche", "fechar", "fecha", "encerre", "encerrar", "encerra", "finalizar", "matar"]
     if not any(v in frase for v in verbos_fechar):
         return ""
 
+    frase_norm = _normalizar_nome(frase)
+    frase_compacta = frase_norm.replace(" ", "")
     apps_ativos = carregar_apps_ativos()
 
-    if "navegador" in frase:
-        for nav in ["firefox", "google chrome", "chrome", "brave", "edge"]:
-            if nav in apps_ativos:
-                return fechar_aplicativo(nav)
-    if any(v in frase for v in ["vscode", "vs code", "v s code", "visual studio", "visual code"]):
-        for ide in ["visual studio code", "vscode"]:
-            if ide in apps_ativos:
-                return fechar_aplicativo(ide)
+    if any(v in frase_norm for v in ["vscode", "vs code", "v s code", "visual studio", "visual code"]):
+        subprocess.run('taskkill /F /IM "Code.exe" /T', shell=True, creationflags=0x08000000)
+        return "Encerrando Visual Studio Code."
 
-    for chave in sorted(apps_ativos.keys(), key=len, reverse=True):
-        if chave in frase:
-            return fechar_aplicativo(chave)
+    candidatos = []
+    for chave, info in apps_ativos.items():
+        candidatos.append((_normalizar_nome(chave), chave))
+        for ap in info.get("apelidos", []):
+            ap_norm = _normalizar_nome(ap)
+            if ap_norm:
+                candidatos.append((ap_norm, chave))
+
+    candidatos.sort(key=lambda x: len(x[0]), reverse=True)
+
+    for gatilho, chave_real in candidatos:
+        gatilho_compacto = gatilho.replace(" ", "")
+        if gatilho in frase_norm or (len(gatilho_compacto) >= 2 and gatilho_compacto in frase_compacta):
+            return fechar_aplicativo(chave_real)
 
     return ""

@@ -1,113 +1,115 @@
-# ⚡ CAPRI // Project Capricorn OS
+# ⚡ CAPRI // PROJECT CAPRICORN `v0.1.3`
 
-Assistente virtual tática com estética Cyberpunk para Windows, equipada com interface flutuante (HUD), central de configurações com scanner automático de programas, ativação em duas etapas com detecção inteligente de voz (VAD), integração de pesquisa em tempo real via Google Gemini, reprodução inteligente de músicas no YouTube, controle global de mídia/energia e síntese de voz clonada com cache local.
+![Version](https://img.shields.io/badge/version-0.1.3-00F0FF?style=for-the-badge)
+![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-00FF66?style=for-the-badge)
+![Python](https://img.shields.io/badge/Python-3.10%2B-A855F7?style=for-the-badge)
+![Architecture](https://img.shields.io/badge/arquitetura-Modular%20(src%2F)-FF0055?style=for-the-badge)
 
----
-
-## 📁 1. Estrutura de Arquivos do Projeto
-
-Mantenha os arquivos principais na mesma pasta do projeto:
-
-* **`capri_core.py`**: Núcleo do sistema. Contém o HUD Cyberpunk, a Central de Configurações (`⚙`), captura inteligente de microfone, integração com voz clonada, controle de energia/mídia, player do YouTube e o cérebro conectado ao Gemini com Pesquisa Google.
-* **`abrir_apps.py`**: Módulo dinâmico que inicia apenas os programas autorizados com o botão verde (`✔`) nas configurações.
-* **`fechar_apps.py`**: Módulo dinâmico que encerra processos em segundo plano via `taskkill` respeitando as permissões da interface.
-* **`capri_config.json`** *(Gerado automaticamente)*: Armazena suas chaves de API e o catálogo de aplicativos escaneados do computador.
-* **`cache/`** *(Pasta gerada automaticamente)*: Guarda os arquivos `.mp3` das respostas rápidas e da voz sintetizada para resposta instantânea (`0.1s`) e economia de requisição de API.
-* **`.gitignore`**: Protege suas chaves de API (`capri_config.json`) e áudios locais (`cache/`) para não serem enviados ao GitHub.
+> **Assistente Virtual Tática Cyberpunk para Windows** com controle nativo de sistema, integração direta com o aplicativo **Spotify Desktop**, cadastro manual de jogos/executáveis (`.exe`) por apelido de voz, síntese de voz clonada com cache instantâneo e pesquisa web em tempo real via Google Gemini.
 
 ---
 
-## 🚀 2. Passo a Passo para Instalar em Outro Computador
+## 🚀 O que há de novo na versão `0.1.3`
 
-### Passo 2.1: Instalar o Python
-1. Baixe e instale o **Python** (versão 3.10 até 3.14) em [python.org](https://www.python.org/).
-2. **Importante:** Na primeira tela do instalador, marque a opção **"Add Python to PATH"** antes de clicar em *Install Now*.
-
-### Passo 2.2: Instalar as Bibliotecas no Terminal
-Abra o terminal (**PowerShell** ou **CMD**) dentro da pasta do projeto e execute o comando abaixo para instalar todas as dependências:
-
-```powershell
-pip install requests numpy sounddevice SpeechRecognition edge-tts pygame-ce pystray Pillow google-genai
-```
-
-### Passo 2.3: Iniciar e Configurar pela Interface Gráfica (Primeiro Uso)
-Não é necessário editar chaves dentro do código. Basta iniciar a assistente pelo terminal:
-
-```powershell
-python capri_core.py
-```
-
-1. **Abertura Automática no 1º Uso:** Na primeira execução, a **Central de Configurações (`⚙`)** se abrirá automaticamente e fará um scan completo dos aplicativos instalados no seu Windows.
-2. **Chaves de API:** Preencha nos campos da janela:
-   * **Gemini API Key:** Gere gratuitamente no [Google AI Studio](https://aistudio.google.com/).
-   * **Fish Audio API Key:** Gere na aba API do site [fish.audio](https://fish.audio/).
-   * **Fish Audio Voice ID:** Copie o ID do modelo de voz clonada criado no Fish Audio.
-3. **Permissões de Aplicativos (`✔` / `✖`):** Use a barra de busca para filtrar seus programas e clique no interruptor ao lado de cada aplicativo para ativar (**Verde `✔`**) ou bloquear (**Vermelho `✖`**) o controle por voz. O salvamento é automático.
-4. **Inicialização com o Windows:** Após a primeira execução, a Capri se registra automaticamente no Windows via `pythonw.exe` para iniciar junto com o computador sem abrir a tela preta do terminal.
-
-### Passo 2.4: Liberar o Autoplay do YouTube no Firefox
-Para que as músicas pedidas à Capri comecem a tocar sozinhas:
-1. Abra um vídeo do YouTube no **Firefox** e clique no ícone de **permissões da página** (ao lado esquerdo de `youtube.com` na barra de endereços).
-2. Em **Reproduzir automaticamente**, mude de *Bloquear áudio* para **Permitir áudio e vídeo**.
+* 🧩 **Arquitetura 100% Modular (`src/`):** O antigo código monolítico foi dividido em 8 módulos independentes e organizados dentro da pasta `src/`, facilitando a manutenção, leitura e expansão do projeto.
+* 🎵 **Integração Nativa com Spotify Desktop:** Substituição definitiva do navegador pelo aplicativo oficial do **Spotify para Windows**. A Capri pesquisa e inicia músicas dentro da própria janela do app (`spotify:search:`) e controla o **volume interno do Spotify** (`Ctrl + Cima/Baixo` direto no processo `spotify.exe`) sem abaixar o volume da voz da assistente.
+* 🎮 **Seletor Manual de Executáveis (`.exe`) + Apelidos de Voz:** Agora você pode selecionar qualquer arquivo `.exe` ou atalho manualmente nas pastas do PC (pelo botão na interface ou por comando de voz) e definir como quer chamá-lo (ex: selecionar `cs2.exe` e apelidar de **"CS2"**). Inclui normalização fonética inteligente (`"cs 2"` $\rightarrow$ `"cs2"`) e inicialização no diretório raiz do jogo (`cwd`).
+* 🖥️ **HUD Minimalista:** Limpeza visual da janela principal, removendo o excesso de legendas de transcrição e mantendo o prompt fixo **`Diga, CAPRI`**, o indicador de estado dinâmico e o oscilador de sinal de voz em tempo real.
+* ⚡ **Energia e Sessão Aprimoradas:** Correção no reconhecimento natural para comandos de **Bloquear Tela** (`LockWorkStation`) e **Suspender PC** via chamada nativa da DLL `powrprof.dll`.
 
 ---
 
-## 🎙️ 3. Funcionalidades e Comandos de Voz
-
-### 🟢 Ativação em 2 Etapas e Medidor de Voz Discreto
-* **Modo de Espera Discreto:** Enquanto você não chama a Capri, o medidor **"SINAL DE VOZ"** fica desligado (`EM ESPERA`), garantindo privacidade visual.
-* **Chamada Natural:** Diga apenas **"Capri"**. Ela responderá imediatamente (*"Oie"*, *"Fala, bobão"*, *"Diga lá"*) usando o cache local, ativará a barra verde de sinal de voz (`OUVINDO VOCÊ...`) e aguardará o seu comando ou pergunta.
-
-### 🎵 YouTube Inteligente (Mesma Aba) e Controle de Mídia
-* **Tocar Música:** Diga *"Coloque uma música"* (ela perguntará qual você quer ouvir) ou diga direto *"Coloque a música [nome]"*.
-* **Troca na Mesma Guia:** Se o YouTube já estiver aberto no Firefox, ao pedir *"Troque a música"* ou *"Coloque outra música"*, a Capri localiza a janela do navegador e substitui o vídeo na **mesma aba**, sem acumular guias abertas.
-* **Controle Global de Reprodução:** Diga *"Pausar música"*, *"Continuar música"*, *"Próxima música"* ou *"Música anterior"* para controlar o áudio mesmo com o navegador minimizado.
-
-### 🌐 Pesquisa Google em Tempo Real (Gemini API)
-* Faça perguntas sobre fatos atuais, notícias, clima ou curiosidades (ex: *"Quem é o atual presidente do Brasil?"*). A Capri consulta a ferramenta `GoogleSearch` integrada à Gemini API e responde de forma direta com memória de contexto da conversa.
-
-### 🖥️ Controle de Aplicativos, Sistema e Energia
-* **Abrir e Fechar Programas:** *"Abrir calculadora"*, *"Abrir Visual Studio Code"*, *"Fechar Discord"*, *"Abrir configurações"*.
-* **Tema do Windows:** *"Mudar para o tema escuro"* ou *"Mudar para o tema claro"*.
-* **Energia e Segurança:**
-  * *"Bloquear a tela"* / *"Trancar o PC"*: Bloqueia a sessão do Windows em 2 segundos.
-  * *"Desligar o computador"* / *"Reiniciar o computador"*: Inicia a contagem de 10 segundos para encerramento seguro.
-  * *"Cancelar desligamento"*: Aborta imediatamente a contagem regressiva de desligamento.
-  * *"Suspender o computador"*: Coloca o PC em modo de suspensão.
-  * *"Mutar"* / *"Desligar sistema"*: Silencia o microfone da Capri ou fecha a assistente.
-
----
-
-## 🔒 4. Segurança e Proteção no GitHub (`.gitignore`)
-
-Para evitar que suas chaves pessoais no `capri_config.json` e os áudios gerados na pasta `cache/` sejam enviados para o seu repositório do GitHub, mantenha o arquivo **`.gitignore`** na raiz do projeto com o seguinte conteúdo:
+## 📂 Estrutura Modular do Projeto
 
 ```text
-capri_config.json
-cache/
-capri_voz.mp3
-.venv/
-__pycache__/
+Capricorn/
+├── cache/                  # Áudios de resposta rápida gerados (ignorado pelo Git)
+├── src/                    # Código-fonte modularizado da Capri
+│   ├── capri_core.py       # Ponto de entrada principal (inicializa threads e loops)
+│   ├── hud.py              # Interface Cyberpunk, Bandeja do Sistema e Janela de Configs
+│   ├── voz.py              # Escuta com VAD, Barra de Sinal, Fish Audio TTS e Cache
+│   ├── cerebro_ia.py       # Roteador de comandos, Cadastro de .exe por voz e Gemini API
+│   ├── spotify_control.py  # Busca, Play automático e Volume exclusivo do Spotify Desktop
+│   ├── sistema_pc.py       # Energia (Bloquear, Suspender, Desligar), Tema e Relógio
+│   ├── abrir_apps.py       # Abertura rápida de programas e jogos personalizados
+│   └── fechar_apps.py      # Encerramento forçado de processos (taskkill)
+├── .gitignore              # Proteção de chaves de API, cache e arquivos compilados
+├── capri_config.json       # Chaves de API e lista de aplicativos/apelidos (gerado localmente)
+└── README.md               # Documentação do projeto
 ```
 
 ---
 
-## 🧩 5. O que cada `import` faz (Resumo Técnico)
+## 🛠️ Funcionalidades Principais
 
-### Bibliotecas Nativas do Python (Já vêm com o Python)
-* **`os`, `sys` e `json`**: Gerenciam diretórios (`cache/`), variáveis de ambiente, leitura/gravação do `capri_config.json` e o caminho do `pythonw.exe`.
-* **`time` e `datetime`**: Controlam temporizadores e consultam o relógio e calendário reais do sistema.
-* **`ctypes` e `winreg`**: Acessam a API nativa e o Registro do Windows para escanear programas instalados, trocar o tema Claro/Escuro, bloquear a tela (`LockWorkStation`), enviar teclas multimídia/atalhos e focar a aba ativa do Firefox.
-* **`subprocess` e `urllib.parse.quote_plus`**: Executam processos do sistema, enviam URLs para a área de transferência e formatam pesquisas para o YouTube.
-* **`threading` e `asyncio`**: Mantêm o HUD, o ícone da bandeja, o scanner e a IA rodando em paralelo sem congelar a tela.
-* **`re`, `random` e `collections.deque`**: Filtram textos, sorteiam saudações e mantêm um buffer circular de pré-fala (`0.4s`) para nunca cortar o início da voz do usuário.
-* **`tkinter` e `tkinter.messagebox`**: Constroem o HUD flutuante Cyberpunk, a Central de Configurações com rolagem e os botões deslizantes customizados (`BotaoSwitchApp`).
+### 1. 🎵 Controle Total do Spotify Desktop
+* **Busca e Reprodução Direta:** Peça *"Capri, coloque uma música"* ou *"Capri, troque a música para [nome]"*. Ela aciona o aplicativo do Spotify, seleciona o melhor resultado e inicia a faixa sem abrir abas de navegador.
+* **Volume Independente:** Peça *"Volume em 30%"*, *"Abaixar volume"* ou *"Volume no máximo"*. A Capri ajusta apenas o volume interno do Spotify e devolve o foco para a janela que você estava usando.
+* **Controle de Faixas:** Comandos instantâneos para pausar, retomar, pular para a próxima música ou voltar à faixa anterior.
 
-### Bibliotecas Externas (Instaladas via `pip`)
-* **`google.genai` (`genai`, `types`)**: Conecta o sistema aos modelos Gemini Flash com suporte à ferramenta de busca `GoogleSearch` em tempo real.
-* **`requests`**: Conecta à API do Fish Audio (`s2.1-pro-free`), localiza o ID de vídeos no YouTube e envia mensagens via Webhook ao Discord.
-* **`sounddevice` e `numpy`**: Capturam o áudio em blocos de `100ms`, detectam início e fim de frase automaticamente (VAD) e normalizam o ganho do volume do microfone.
-* **`speech_recognition`**: Transcreve o áudio normalizado para texto em português (`pt-BR`).
-* **`edge_tts`**: Sintetizador neural gratuito da Microsoft usado como fallback caso a API externa oscile.
-* **`pygame` (`pygame-ce`)**: Reproduz os arquivos `.mp3` da pasta `cache/` em segundo plano sem abrir janelas externas.
-* **`pystray` e `PIL` (`Image`, `ImageDraw`)**: Desenham o ícone neon e gerenciam o menu rápido na bandeja do sistema (ao lado do relógio do Windows).
+### 2. 🎮 Cadastro Manual de Jogos e Programas (`.exe`)
+* **Via Interface Gráfica:** Abra as configurações (`⚙`) e clique em **`➕ ADICIONAR EXECUTÁVEL (.EXE) MANUALMENTE`**, escolha o arquivo `.exe` no Windows Explorer e digite como quer chamá-lo (ex: `CS2`, `Valorant`, `Photoshop`).
+* **Via Comando de Voz:** Diga *"Capri, adicionar executável"*. Ela abrirá o seletor de arquivos do Windows e perguntará em voz alta: **"Como você quer chamar esse executável?"**.
+* Apps cadastrados manualmente recebem destaque com estrela (`⭐`) no topo da lista de permissões e podem ser abertos (*"Capri, abrir CS2"*) ou fechados (*"Capri, fechar CS2"*).
+
+### 3. 💻 Controle do Sistema Windows (Execução em `0.1s`)
+* **Energia e Segurança:** Bloquear estação de trabalho, suspender o computador, desligar/reiniciar com timer de segurança de 10 segundos e comando de abortar desligamento.
+* **Personalização:** Alternância instantânea entre o **Modo Escuro** e **Modo Claro** do Windows via Registro.
+* **Execução em Segundo Plano:** Minimiza para a Bandeja do Sistema (*System Tray*) perto do relógio do Windows e inicia automaticamente junto com o sistema.
+
+### 4. 🧠 Cérebro Gemini + Pesquisa Google em Tempo Real
+* Integrada aos modelos `gemini-2.5-flash` com a ferramenta `GoogleSearch` ativada para responder perguntas sobre fatos atuais, clima, cotações, notícias e curiosidades com respostas curtas, diretas e sem marcações poluídas.
+
+---
+
+## 🎙️ Guia Rápido de Comandos de Voz
+
+| Categoria | Exemplos de Comandos | Ação Executada |
+| :--- | :--- | :--- |
+| **Chamada** | *"Capri"* / *"Oi Capri"* | Ativa a escuta com resposta rápida em cache |
+| **Spotify (Música)** | *"Coloque uma música"* / *"Trocar a música"* | Pergunta qual música você quer e dá Play no Spotify |
+| **Spotify (Direto)** | *"Coloque a música Numb"* | Busca e toca a faixa imediatamente no Spotify |
+| **Volume Spotify** | *"Volume em 30%"* / *"Abaixar volume"* / *"Aumentar volume"* | Ajusta o volume interno do app do Spotify |
+| **Mídia** | *"Pausar música"* / *"Continuar música"* / *"Próxima música"* | Controla a reprodução atual |
+| **Cadastrar `.exe`** | *"Adicionar executável"* / *"Cadastrar programa"* | Abre o seletor de `.exe` e pergunta o apelido por voz |
+| **Abrir / Fechar** | *"Abrir CS2"* / *"Abrir VS Code"* / *"Fechar CS2"* | Inicia ou encerra o aplicativo autorizado |
+| **Energia / Tela** | *"Bloquear o PC"* / *"Suspender o PC"* | Tranca a tela do Windows ou suspende a máquina |
+| **Desligamento** | *"Desligar o computador"* / *"Cancelar desligamento"* | Agenda desligamento em 10s ou cancela a contagem |
+| **Sistema** | *"Modo escuro"* / *"Modo claro"* / *"Que horas são?"* | Altera o tema do Windows ou informa o horário |
+| **Interface** | *"Abrir configurações"* / *"Fique quieta"* | Abre o painel de controle da Capri ou silencia o mic |
+
+---
+
+## ⚙️ Instalação e Uso
+
+### 1. Pré-requisitos
+* **Windows 10 ou 11** (64 bits)
+* **Python 3.10 ou superior**
+* **Spotify Desktop** instalado no computador (para os comandos de música)
+
+### 2. Instalando as dependências
+No terminal PowerShell, dentro da pasta raiz do projeto:
+
+```powershell
+python -m pip install google-genai pygame-ce sounddevice numpy edge-tts SpeechRecognition pystray Pillow requests
+```
+
+### 3. Executando a Capri em modo de desenvolvimento
+```powershell
+python src/capri_core.py
+```
+
+### 4. Compilando o executável (`Capri.exe`)
+Caso queira gerar o executável único sem janela de terminal usando o **PyInstaller**:
+
+```powershell
+python -m PyInstaller --noconsole --onefile --paths src --name "Capri" src/capri_core.py
+```
+
+---
+
+## 🔑 Configuração Inicial
+Na primeira execução, clique no botão **`⚙`** no HUD (ou diga *"Capri, abrir configurações"*):
+1. Insira sua **Gemini API Key** (obrigatória para perguntas gerais).
+2. *(Opcional)* Insira sua **Fish Audio API Key** e **Voice ID** para utilizar voz clonada personalizada (caso deixe em branco, a Capri utilizará automaticamente a voz neural nativa em Português).
+3. Marque em **Verde (`✔`)** os aplicativos que a Capri tem permissão para abrir/fechar ou clique em **`➕ ADICIONAR EXECUTÁVEL (.EXE) MANUALMENTE`** para cadastrar seus jogos e programas favoritos.

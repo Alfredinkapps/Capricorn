@@ -2,8 +2,8 @@
 
 
 a = Analysis(
-    ['capri_core.py'],
-    pathex=[],
+    ['src/capri_core.py'],
+    pathex=['src'],
     binaries=[],
     datas=[],
     hiddenimports=[],

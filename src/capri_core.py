@@ -23,12 +23,17 @@ from google.genai import types
 
 # Importa os módulos locais dinâmicos
 from abrir_apps import abrir_aplicativo, verificar_abertura_rapida
-from fechar_apps import fechar_aplicativo, verificar_fechamento_rapido
+from src.fechar_apps import fechar_aplicativo, verificar_fechamento_rapido
 
 if getattr(sys, "frozen", False):
+    # Quando aberto pelo Capri.exe na raiz
     PASTA_PROJETO = os.path.dirname(sys.executable)
 else:
-    PASTA_PROJETO = os.path.dirname(os.path.abspath(__file__))
+    # Quando aberto por src/capri_core.py (sobe 1 pasta para a raiz do projeto)
+    PASTA_SRC = os.path.dirname(os.path.abspath(__file__))
+    if PASTA_SRC not in sys.path:
+        sys.path.insert(0, PASTA_SRC)
+    PASTA_PROJETO = os.path.dirname(PASTA_SRC)
 ARQUIVO_CONFIG = os.path.join(PASTA_PROJETO, "capri_config.json")
 VOZ_FALLBACK = "pt-BR-FranciscaNeural"
 
@@ -190,33 +195,29 @@ def salvar_configuracoes(dados: dict):
         print(f"[Erro ao salvar configurações]: {e}")
 
 
-def configurar_inicializacao_windows(ativar: bool = True) -> str:
-    chave_caminho = r"Software\Microsoft\Windows\CurrentVersion\Run"
-    nome_registro = "CapricornOS_Capri"
-    
-    caminho_python = sys.executable
-    caminho_pythonw = caminho_python.replace("python.exe", "pythonw.exe")
-    if not os.path.exists(caminho_pythonw):
-        caminho_pythonw = caminho_python
-        
-    caminho_script = os.path.abspath(__file__)
-    comando_boot = f'"{caminho_pythonw}" "{caminho_script}"'
-    
+def configurar_inicializacao_windows(ativar: bool = True):
+    caminho_registro = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    nome_app = "CapriAssistant"
+
+    if getattr(sys, "frozen", False):
+        comando = f'"{sys.executable}"'
+    else:
+        python_exe = sys.executable.replace("python.exe", "pythonw.exe")
+        caminho_script = os.path.abspath(__file__)
+        comando = f'"{python_exe}" "{caminho_script}"'
+
     try:
-        chave = winreg.OpenKey(winreg.HKEY_CURRENT_USER, chave_caminho, 0, winreg.KEY_SET_VALUE)
+        chave = winreg.OpenKey(winreg.HKEY_CURRENT_USER, caminho_registro, 0, winreg.KEY_SET_VALUE)
         if ativar:
-            winreg.SetValueEx(chave, nome_registro, 0, winreg.REG_SZ, comando_boot)
-            mensagem = "Inicialização automática ativada."
+            winreg.SetValueEx(chave, nome_app, 0, winreg.REG_SZ, comando)
         else:
             try:
-                winreg.DeleteValue(chave, nome_registro)
-                mensagem = "Inicialização automática desativada."
+                winreg.DeleteValue(chave, nome_app)
             except FileNotFoundError:
-                mensagem = "Já estava desativada."
+                pass
         winreg.CloseKey(chave)
-        return mensagem
     except Exception as e:
-        return f"Erro no registro: {str(e)}"
+        print(f"[Aviso de Registro]: {e}")
 
 
 # =====================================================================
@@ -665,23 +666,22 @@ class CapriHUD:
             pass
         self.root.after(100, self.root.destroy)
 
-
 # =====================================================================
-# 4. MÓDULO DE VOZ (VAD Inteligente + Cache Rápido + Fish Audio)
+# 4. MÓDULO DE VOZ (VAD Inteligente + Cache na Pasta 'cache/' + Fish Audio)
 # =====================================================================
 
 import random
+import subprocess
 from collections import deque
+from urllib.parse import quote_plus
 
-# Frases que a Capri pode responder quando você chama só o nome dela:
 RESPOSTAS_CHAMADA = [
-    "Oi.",
-    "Fala.",
-    "Diga.",
-    "Tô ouvindo, fala aí."
+    "Oi",
+    "Fala",
+    "Diga",
+    "Tô ouvindo"
 ]
 
-# Variações fonéticas que o microfone costuma entender quando você diz "Capri":
 GATILHOS_CAPRI = [
     "capri", "cápri", "capricorn", "capricórnio",
     "cabri", "gabri", "kpri", "capricho", "capre", "cap"
@@ -742,24 +742,9 @@ def falar(hud: CapriHUD, texto: str, usar_cache: bool = False):
     print(f"\nCAPRI: {texto}\n")
     hud.atualizar_estado("FALANDO...", "#FF0055", f"CAPRI: {texto}")
 
-    # 1. Cria a pasta 'cache' automaticamente dentro do projeto
     pasta_cache = os.path.join(PASTA_PROJETO, "cache")
     os.makedirs(pasta_cache, exist_ok=True)
 
-    # 2. Move automaticamente os .mp3 antigos que ficaram soltos na pasta principal
-    for arq in os.listdir(PASTA_PROJETO):
-        if arq.endswith(".mp3") and (arq.startswith("cache_") or arq == "capri_voz.mp3"):
-            origem = os.path.join(PASTA_PROJETO, arq)
-            destino = os.path.join(pasta_cache, arq)
-            try:
-                if not os.path.exists(destino):
-                    os.replace(origem, destino)
-                else:
-                    os.remove(origem)
-            except Exception:
-                pass
-
-    # 3. Direciona todos os novos áudios para dentro da pasta 'cache'
     if usar_cache:
         nome_limpo = re.sub(r"[^a-zA-Z0-9]", "_", texto.lower())
         arquivo_audio = os.path.join(pasta_cache, f"cache_{nome_limpo}.mp3")
@@ -788,13 +773,11 @@ def falar(hud: CapriHUD, texto: str, usar_cache: bool = False):
         hud.nivel_voz = 0.0
         pygame.mixer.music.unload()
     except Exception as e:
+        hud.nivel_voz = 0.0
         print(f"[Erro na reprodução de voz]: {e}")
 
+
 def ouvir_microfone_com_hud(hud: CapriHUD, reconhecedor: sr.Recognizer, aguardando_comando: bool = False) -> str:
-    """
-    - Em Espera (aguardando_comando=False): Barra de voz desligada (0.0) aguardando a palavra 'Capri'.
-    - Ativa (aguardando_comando=True): Barra de voz reage à voz do usuário enquanto ele diz o comando.
-    """
     taxa_amostragem = 16000
     bloco = int(taxa_amostragem * 0.1)
     limiar_voz = 380
@@ -827,7 +810,6 @@ def ouvir_microfone_com_hud(hud: CapriHUD, reconhecedor: sr.Recognizer, aguardan
                 copia = dados.copy()
                 pico = int(np.max(np.abs(copia)))
 
-                # SÓ movimenta a barra de voz se você já tiver chamado a Capri!
                 if aguardando_comando:
                     hud.nivel_voz = min(1.0, pico / 2500.0)
                 else:
@@ -877,23 +859,256 @@ def ouvir_microfone_com_hud(hud: CapriHUD, reconhecedor: sr.Recognizer, aguardan
         hud.nivel_voz = 0.0
         print(f"[Aviso de áudio]: {e}")
         return ""
-    
+
+
 # =====================================================================
-# 5. FERRAMENTAS DO SISTEMA E FAST-TRACK LOCAL
+# 5. FERRAMENTAS DO SISTEMA, YOUTUBE MUSIC (MESMA ABA) E VOLUME
 # =====================================================================
 
+JA_ABRIU_YOUTUBE = False
+ULTIMA_MUSICA_TOCADA = ""
+
+
+def _obter_titulo_janela(hwnd: int) -> str:
+    tamanho = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+    if tamanho <= 0:
+        return ""
+    buffer = ctypes.create_unicode_buffer(tamanho + 1)
+    ctypes.windll.user32.GetWindowTextW(hwnd, buffer, tamanho + 1)
+    return buffer.value.lower()
+
+
+def _obter_classe_janela(hwnd: int) -> str:
+    buffer = ctypes.create_unicode_buffer(256)
+    ctypes.windll.user32.GetClassNameW(hwnd, buffer, 256)
+    return buffer.value
+
+
+def encontrar_janela_firefox() -> int:
+    """Localiza a janela principal do navegador Firefox (MozillaWindowClass)."""
+    janelas_prioritarias = []
+    janelas_firefox = []
+
+    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+
+    def _callback(hwnd, lParam):
+        if ctypes.windll.user32.IsWindowVisible(hwnd):
+            classe = _obter_classe_janela(hwnd)
+            titulo = _obter_titulo_janela(hwnd)
+            if classe == "MozillaWindowClass" and ("firefox" in titulo or "mozilla" in titulo):
+                # Verifica se o título tem 'youtube', 'music' ou o nome da última música
+                palavras_musica = [p for p in ULTIMA_MUSICA_TOCADA.split() if len(p) >= 3]
+                if "youtube" in titulo or "music" in titulo or any(p in titulo for p in palavras_musica):
+                    janelas_prioritarias.append(hwnd)
+                else:
+                    janelas_firefox.append(hwnd)
+        return True
+
+    ctypes.windll.user32.EnumWindows(WNDENUMPROC(_callback), 0)
+
+    if janelas_prioritarias:
+        return janelas_prioritarias[0]
+    if janelas_firefox and JA_ABRIU_YOUTUBE:
+        return janelas_firefox[0]
+    return 0
+
+
+def _focar_janela_firefox(hwnd: int):
+    """Traz a janela do Firefox para frente sem usar a tecla Alt (evita abrir nova aba com Alt+Enter)."""
+    if ctypes.windll.user32.IsIconic(hwnd):
+        ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+    ctypes.windll.user32.SwitchToThisWindow(hwnd, True)
+    time.sleep(0.22)
+
+    # Se o usuário estava em outra aba do Firefox, procura a aba onde a música está tocando
+    palavras_musica = [p for p in ULTIMA_MUSICA_TOCADA.split() if len(p) >= 3]
+    for _ in range(8):
+        titulo_atual = _obter_titulo_janela(hwnd)
+        if "youtube" in titulo_atual or "music" in titulo_atual or any(p in titulo_atual for p in palavras_musica):
+            break
+        # Pressiona Ctrl + PageDown para checar a próxima aba
+        ctypes.windll.user32.keybd_event(0x11, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0x22, 0, 0, 0)
+        time.sleep(0.03)
+        ctypes.windll.user32.keybd_event(0x22, 0, 2, 0)
+        ctypes.windll.user32.keybd_event(0x11, 0, 2, 0)
+        time.sleep(0.08)
+
+
+def _substituir_url_na_aba_atual(hwnd: int, url_destino: str) -> bool:
+    """Seleciona a barra de endereços da aba atual do Firefox (Ctrl+L) e carrega a nova música."""
+    try:
+        _focar_janela_firefox(hwnd)
+
+        # Copia a URL para a área de transferência do Windows
+        subprocess.run(["clip"], input=url_destino.strip(), text=True, check=True)
+
+        # Aperta ESC (0x1B) para fechar qualquer menu aberto na página
+        ctypes.windll.user32.keybd_event(0x1B, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0x1B, 0, 2, 0)
+        time.sleep(0.05)
+
+        # Ctrl + L (foca a barra de endereços da aba atual)
+        ctypes.windll.user32.keybd_event(0x11, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0x4C, 0, 0, 0)
+        time.sleep(0.04)
+        ctypes.windll.user32.keybd_event(0x4C, 0, 2, 0)
+        ctypes.windll.user32.keybd_event(0x11, 0, 2, 0)
+        time.sleep(0.12)
+
+        # Ctrl + V (cola a nova URL)
+        ctypes.windll.user32.keybd_event(0x11, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0x56, 0, 0, 0)
+        time.sleep(0.04)
+        ctypes.windll.user32.keybd_event(0x56, 0, 2, 0)
+        ctypes.windll.user32.keybd_event(0x11, 0, 2, 0)
+        time.sleep(0.08)
+
+        # Enter (navega na mesma aba)
+        ctypes.windll.user32.keybd_event(0x0D, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(0x0D, 0, 2, 0)
+        return True
+    except Exception as e:
+        print(f"[Aviso ao substituir aba no Firefox]: {e}")
+        return False
+
+
+def tocar_musica_youtube_firefox(nome_musica: str) -> str:
+    """Abre o YouTube Music na primeira vez e substitui na mesma aba nas próximas músicas."""
+    global JA_ABRIU_YOUTUBE, ULTIMA_MUSICA_TOCADA
+
+    termo = quote_plus(f"{nome_musica.strip()} official audio")
+    url_busca_id = f"https://www.youtube.com/results?search_query={termo}"
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    
+    url_final = f"https://music.youtube.com/search?q={quote_plus(nome_musica.strip())}"
+    try:
+        resp = requests.get(url_busca_id, headers=headers, timeout=8)
+        ids = re.findall(r"watch\?v=([a-zA-Z0-9_-]{11})", resp.text)
+        if ids:
+            url_final = f"https://music.youtube.com/watch?v={ids[0]}"
+    except Exception as e:
+        print(f"[Aviso busca YouTube Music]: {e}")
+
+    hwnd_ff = encontrar_janela_firefox()
+    if hwnd_ff:
+        if _substituir_url_na_aba_atual(hwnd_ff, url_final):
+            JA_ABRIU_YOUTUBE = True
+            ULTIMA_MUSICA_TOCADA = nome_musica.lower().strip()
+            return f"Trocando para {nome_musica} no YouTube Music."
+
+    try:
+        cfg = carregar_configuracoes()
+        caminho_firefox = cfg.get("apps", {}).get("firefox", {}).get("caminho_abrir", "")
+        
+        if caminho_firefox and os.path.exists(caminho_firefox):
+            subprocess.Popen([caminho_firefox, url_final])
+        else:
+            subprocess.Popen(f'start firefox "{url_final}"', shell=True)
+            
+        JA_ABRIU_YOUTUBE = True
+        ULTIMA_MUSICA_TOCADA = nome_musica.lower().strip()
+        return f"Colocando {nome_musica} para tocar no YouTube Music."
+    except Exception as e:
+        return f"Erro ao abrir o YouTube Music no Firefox: {str(e)}"
+
+
+def ajustar_volume_youtube_music(acao: str, nivel_porcentagem: int = -1) -> str:
+    """
+    Controla o volume interno do player do YouTube Music usando os atalhos '-' (0xBD) e '=' (0xBB).
+    Cada toque altera 10% do volume apenas da música, sem diminuir a voz da Capri!
+    """
+    janela_anterior = ctypes.windll.user32.GetForegroundWindow()
+    hwnd_ff = encontrar_janela_firefox()
+
+    # Teclas do player do YouTube Music: 0xBD ('-') diminui 10%, 0xBB ('=') aumenta 10%
+    VK_MENOS_YT = 0xBD
+    VK_MAIS_YT = 0xBB
+
+    if hwnd_ff:
+        try:
+            _focar_janela_firefox(hwnd_ff)
+            # Fecha eventual caixa de texto focada para o atalho ir para o player
+            ctypes.windll.user32.keybd_event(0x1B, 0, 0, 0)
+            ctypes.windll.user32.keybd_event(0x1B, 0, 2, 0)
+            time.sleep(0.05)
+
+            if nivel_porcentagem >= 0:
+                nivel = max(0, min(100, nivel_porcentagem))
+                # Zera o slider do YouTube Music (10 toques em '-') e sobe até a porcentagem pedida
+                for _ in range(11):
+                    ctypes.windll.user32.keybd_event(VK_MENOS_YT, 0, 0, 0)
+                    ctypes.windll.user32.keybd_event(VK_MENOS_YT, 0, 2, 0)
+                    time.sleep(0.02)
+                passos_subir = round(nivel / 10)
+                for _ in range(passos_subir):
+                    ctypes.windll.user32.keybd_event(VK_MAIS_YT, 0, 0, 0)
+                    ctypes.windll.user32.keybd_event(VK_MAIS_YT, 0, 2, 0)
+                    time.sleep(0.02)
+                msg = f"Volume do YouTube Music ajustado para {nivel} por cento."
+
+            elif acao == "aumentar":
+                for _ in range(3):  # +30% no YouTube Music
+                    ctypes.windll.user32.keybd_event(VK_MAIS_YT, 0, 0, 0)
+                    ctypes.windll.user32.keybd_event(VK_MAIS_YT, 0, 2, 0)
+                    time.sleep(0.03)
+                msg = "Aumentando o volume da música."
+
+            else:  # diminuir
+                for _ in range(3):  # -30% no YouTube Music
+                    ctypes.windll.user32.keybd_event(VK_MENOS_YT, 0, 0, 0)
+                    ctypes.windll.user32.keybd_event(VK_MENOS_YT, 0, 2, 0)
+                    time.sleep(0.03)
+                msg = "Abaixando o volume da música."
+
+            # Devolve o foco para a janela que você estava usando antes (ex: VS Code)
+            if janela_anterior and janela_anterior != hwnd_ff:
+                time.sleep(0.08)
+                ctypes.windll.user32.SwitchToThisWindow(janela_anterior, True)
+
+            return msg
+        except Exception as e:
+            print(f"[Aviso volume YouTube Music]: {e}")
+
+    # Fallback: se o YouTube Music não estiver aberto, ajusta o volume geral do Windows
+    tecla_win = 0xAF if acao == "aumentar" else 0xAE
+    for _ in range(5):
+        ctypes.windll.user32.keybd_event(tecla_win, 0, 1, 0)
+        ctypes.windll.user32.keybd_event(tecla_win, 0, 3, 0)
+    return "Volume ajustado."
+
+
+def controlar_midia_windows(acao: str) -> str:
+    acao_limpa = acao.lower().strip()
+    try:
+        if acao_limpa == "pausar":
+            tecla_vk = 0xB3
+            msg = "Reprodução pausada."
+        elif acao_limpa == "continuar":
+            tecla_vk = 0xB3
+            msg = "Retomando a música."
+        elif acao_limpa == "proxima":
+            tecla_vk = 0xB0
+            msg = "Pulando para a próxima faixa."
+        elif acao_limpa == "anterior":
+            tecla_vk = 0xB1
+            msg = "Voltando para a faixa anterior."
+        else:
+            return "Comando de mídia não reconhecido."
+
+        ctypes.windll.user32.keybd_event(tecla_vk, 0, 1, 0)
+        ctypes.windll.user32.keybd_event(tecla_vk, 0, 3, 0)
+        return msg
+    except Exception as e:
+        return f"Erro ao controlar mídia: {str(e)}"
+
+
 def consultar_relogio_sistema() -> str:
-    """Retorna o horário atual e a data de hoje do computador do usuário."""
     agora = datetime.now()
     return f"Agora são {agora.strftime('%H:%M')} do dia {agora.strftime('%d/%m/%Y')}."
 
 
 def mudar_tema_windows(modo: str) -> str:
-    """Altera a cor/tema do Windows entre o modo claro e o modo escuro.
-    
-    Args:
-        modo: Deve ser estritamente 'escuro' ou 'claro'.
-    """
     valor = 0 if modo.lower() == "escuro" else 1
     caminho_registro = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
     try:
@@ -908,11 +1123,6 @@ def mudar_tema_windows(modo: str) -> str:
 
 
 def enviar_mensagem_discord(mensagem: str) -> str:
-    """Envia uma mensagem para um canal do Discord usando Webhook.
-    
-    Args:
-        mensagem: O conteúdo de texto da mensagem que será enviada.
-    """
     cfg = carregar_configuracoes()
     webhook_url = cfg.get("discord_webhook", "")
     if not webhook_url:
@@ -927,21 +1137,10 @@ def enviar_mensagem_discord(mensagem: str) -> str:
 
 
 def agendar_compromisso(titulo: str, data_hora: str) -> str:
-    """Agenda um evento ou lembrete no calendário do usuário.
-    
-    Args:
-        titulo: Nome ou descrição do evento.
-        data_hora: Data e horário do evento.
-    """
     return f"Compromisso {titulo} agendado para {data_hora}."
 
 
 def controlar_energia_pc(acao: str) -> str:
-    """Desliga, reinicia, suspende, bloqueia a tela do computador ou cancela um desligamento.
-    
-    Args:
-        acao: Deve ser estritamente 'desligar', 'reiniciar', 'suspender', 'bloquear' ou 'cancelar'.
-    """
     acao_limpa = acao.lower().strip()
     try:
         if "bloquear" in acao_limpa or "trancar" in acao_limpa:
@@ -963,174 +1162,26 @@ def controlar_energia_pc(acao: str) -> str:
     except Exception as e:
         return f"Erro ao executar comando de energia: {str(e)}"
 
-from urllib.parse import quote_plus
 
-import subprocess
-from urllib.parse import quote_plus
-
-# Variável global que registra se a Capri já iniciou uma sessão do YouTube
-JA_ABRIU_YOUTUBE = False
-
-
-def _obter_titulo_janela(hwnd: int) -> str:
-    """Retorna o título atual de uma janela do Windows pelo seu identificador (HWND)."""
-    tamanho = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
-    if tamanho <= 0:
-        return ""
-    buffer = ctypes.create_unicode_buffer(tamanho + 1)
-    ctypes.windll.user32.GetWindowTextW(hwnd, buffer, tamanho + 1)
-    return buffer.value.lower()
-
-
-def encontrar_janela_youtube_firefox() -> tuple[int, bool]:
-    """
-    Procura se o Firefox está aberto com o YouTube.
-    Retorna: (hwnd_da_janela, True se a aba ativa já for o YouTube ou False se estiver em outra aba).
-    """
-    janelas_yt = []
-    janelas_ff = []
-
-    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
-
-    def _callback(hwnd, lParam):
-        if ctypes.windll.user32.IsWindowVisible(hwnd):
-            titulo = _obter_titulo_janela(hwnd)
-            if "firefox" in titulo or "mozilla" in titulo:
-                if "youtube" in titulo:
-                    janelas_yt.append(hwnd)
-                else:
-                    janelas_ff.append(hwnd)
-        return True
-
-    ctypes.windll.user32.EnumWindows(WNDENUMPROC(_callback), 0)
-
-    if janelas_yt:
-        return janelas_yt[0], True
-    if janelas_ff and JA_ABRIU_YOUTUBE:
-        return janelas_ff[0], False
-    return 0, False
-
-
-def _enviar_atalho_teclado(vk_modificador: int, vk_tecla: int):
-    """Pressiona uma combinação de teclas (ex: Ctrl+L, Ctrl+V, Ctrl+PageDown)."""
-    ctypes.windll.user32.keybd_event(vk_modificador, 0, 0, 0)
-    ctypes.windll.user32.keybd_event(vk_tecla, 0, 0, 0)
-    time.sleep(0.03)
-    ctypes.windll.user32.keybd_event(vk_tecla, 0, 2, 0)
-    ctypes.windll.user32.keybd_event(vk_modificador, 0, 2, 0)
-
-
-def _navegar_na_aba_atual_firefox(hwnd: int, ja_na_aba_yt: bool, url_destino: str) -> bool:
-    """Foca a aba do YouTube já aberta no Firefox e substitui o endereço pela nova música."""
-    try:
-        # 1. Restaura a janela caso esteja minimizada e traz o Firefox para frente
-        if ctypes.windll.user32.IsIconic(hwnd):
-            ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-
-        # Libera a permissão de foco do Windows simulando um toque rápido na tecla Alt (0x12)
-        ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)
-        ctypes.windll.user32.keybd_event(0x12, 0, 2, 0)
-        ctypes.windll.user32.SetForegroundWindow(hwnd)
-        time.sleep(0.18)
-
-        # 2. Se o usuário estava em outra aba do Firefox, procura a aba do YouTube (Ctrl + PageDown)
-        if not ja_na_aba_yt:
-            achou_aba = False
-            for _ in range(10):
-                if "youtube" in _obter_titulo_janela(hwnd):
-                    achou_aba = True
-                    break
-                _enviar_atalho_teclado(0x11, 0x22)  # 0x11 = Ctrl, 0x22 = PageDown (Próxima aba)
-                time.sleep(0.08)
-
-            if not achou_aba and "youtube" not in _obter_titulo_janela(hwnd):
-                return False
-
-        # 3. Copia a URL da música nova para a área de transferência do Windows
-        subprocess.run(["clip"], input=url_destino.strip(), text=True, check=True)
-
-        # 4. Seleciona a barra de endereço da aba atual (Ctrl+L), cola (Ctrl+V) e aperta Enter (0x0D)
-        _enviar_atalho_teclado(0x11, 0x4C)  # Ctrl + L
-        time.sleep(0.08)
-        _enviar_atalho_teclado(0x11, 0x56)  # Ctrl + V
-        time.sleep(0.06)
-        ctypes.windll.user32.keybd_event(0x0D, 0, 0, 0)  # Enter
-        ctypes.windll.user32.keybd_event(0x0D, 0, 2, 0)
-        return True
-    except Exception as e:
-        print(f"[Aviso ao trocar música na aba atual]: {e}")
-        return False
-
-
-def tocar_musica_youtube_firefox(nome_musica: str) -> str:
-    """Se já houver uma aba do YouTube Music aberta no Firefox, troca a música nela; senão, abre uma nova."""
-    global JA_ABRIU_YOUTUBE
-
-    # Busca o ID da faixa e direciona para o player do YouTube Music
-    termo = quote_plus(f"{nome_musica.strip()} official audio")
-    url_busca_id = f"https://www.youtube.com/results?search_query={termo}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    
-    # Caso não encontre ID direto, abre a página de busca do próprio YouTube Music
-    url_final = f"https://music.youtube.com/search?q={quote_plus(nome_musica.strip())}"
-    try:
-        resp = requests.get(url_busca_id, headers=headers, timeout=8)
-        ids = re.findall(r"watch\?v=([a-zA-Z0-9_-]{11})", resp.text)
-        if ids:
-            url_final = f"https://music.youtube.com/watch?v={ids[0]}"
-    except Exception as e:
-        print(f"[Aviso busca YouTube Music]: {e}")
-
-    # Verifica se já existe uma janela do Firefox com o YouTube Music aberto
-    hwnd_ff, ja_na_aba_yt = encontrar_janela_youtube_firefox()
-    if hwnd_ff:
-        trocou_na_mesma_aba = _navegar_na_aba_atual_firefox(hwnd_ff, ja_na_aba_yt, url_final)
-        if trocou_na_mesma_aba:
-            JA_ABRIU_YOUTUBE = True
-            return f"Trocando para {nome_musica} no YouTube Music."
-
-    # Se não havia nenhuma aba aberta, inicia o YouTube Music pela primeira vez
-    try:
-        cfg = carregar_configuracoes()
-        caminho_firefox = cfg.get("apps", {}).get("firefox", {}).get("caminho_abrir", "")
-        
-        if caminho_firefox and os.path.exists(caminho_firefox):
-            subprocess.Popen([caminho_firefox, url_final])
-        else:
-            subprocess.Popen(f'start firefox "{url_final}"', shell=True)
-            
-        JA_ABRIU_YOUTUBE = True
-        return f"Colocando {nome_musica} para tocar no YouTube Music."
-    except Exception as e:
-        return f"Erro ao abrir o YouTube Music no Firefox: {str(e)}"
-
-def controlar_midia_windows(acao: str) -> str:
-    """Envia o sinal global de mídia do Windows (Play/Pause, Próxima ou Anterior) via ctypes."""
-    acao_limpa = acao.lower().strip()
-    try:
-        if acao_limpa == "pausar":
-            tecla_vk = 0xB3  # Código nativo VK_MEDIA_PLAY_PAUSE
-            msg = "Reprodução pausada."
-        elif acao_limpa == "continuar":
-            tecla_vk = 0xB3  # Código nativo VK_MEDIA_PLAY_PAUSE
-            msg = "Retomando a música."
-        elif acao_limpa == "proxima":
-            tecla_vk = 0xB0  # Código nativo VK_MEDIA_NEXT_TRACK
-            msg = "Pulando para a próxima faixa."
-        elif acao_limpa == "anterior":
-            tecla_vk = 0xB1  # Código nativo VK_MEDIA_PREV_TRACK
-            msg = "Voltando para a faixa anterior."
-        else:
-            return "Comando de mídia não reconhecido."
-
-        # Simula o pressionamento e liberação da tecla multimídia do Windows
-        ctypes.windll.user32.keybd_event(tecla_vk, 0, 1, 0)
-        ctypes.windll.user32.keybd_event(tecla_vk, 0, 3, 0)
-        return msg
-    except Exception as e:
-        return f"Erro ao controlar mídia: {str(e)}"   
-    
 def tentar_execucao_instantanea(frase: str, hud: CapriHUD) -> str:
+    # 1. CONTROLE DE VOLUME DO YOUTUBE MUSIC
+    if "volume" in frase or "som" in frase or "música está muito" in frase:
+        if any(p in frase for p in ["máximo", "maximo", "tudo", "100"]):
+            return ajustar_volume_youtube_music("aumentar", 100)
+        if any(p in frase for p in ["mínimo", "minimo", "baixinho"]):
+            return ajustar_volume_youtube_music("diminuir", 10)
+
+        # Verifica se você falou um número (ex: "volume em 30%", "volume para 50")
+        numeros = re.findall(r"\b(\d{1,3})\b", frase)
+        if numeros:
+            return ajustar_volume_youtube_music("definir", int(numeros[0]))
+
+        if any(p in frase for p in ["aumentar", "aumenta", "aumente", "subir", "sobe", "mais alto"]):
+            return ajustar_volume_youtube_music("aumentar")
+        if any(p in frase for p in ["abaixar", "abaixa", "abaixe", "diminuir", "diminui", "diminua", "baixar", "baixa", "muito alta", "muito alto"]):
+            return ajustar_volume_youtube_music("diminuir")
+
+    # 2. CONTROLE DE REPRODUÇÃO (PAUSE / PLAY / FAIXAS)
     if any(cmd in frase for cmd in [
         "pausar música", "pausa a música", "pause a música", "pausar o vídeo",
         "pausar reprodução", "pausar youtube", "parar música", "para a música"
@@ -1148,7 +1199,8 @@ def tentar_execucao_instantanea(frase: str, hud: CapriHUD) -> str:
 
     if any(cmd in frase for cmd in ["música anterior", "voltar faixa", "faixa anterior"]):
         return controlar_midia_windows("anterior")
-    
+
+    # 3. ENERGIA E SISTEMA
     if any(cmd in frase for cmd in ["cancelar desligamento", "cancele o desligamento", "abortar desligamento", "não desligar"]):
         return controlar_energia_pc("cancelar")
 
@@ -1202,11 +1254,10 @@ def tentar_execucao_instantanea(frase: str, hud: CapriHUD) -> str:
 
 
 # =====================================================================
-# 6. CÉREBRO DA CAPRI (Pesquisa Google em Tempo Real + Comandos Locais)
+# 6. CÉREBRO DA CAPRI (Pesquisa Google Gemini + Comandos Locais)
 # =====================================================================
 
 def obter_lista_modelos_rapidos(client) -> list:
-    """Prioriza os modelos Flash mais estáveis e rápidos com suporte à Pesquisa Google."""
     preferidos = [
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
@@ -1226,7 +1277,6 @@ def obter_lista_modelos_rapidos(client) -> list:
 
 
 def limpar_resposta_ia(texto: str) -> str:
-    """Remove asteriscos, links e marcações para a voz da Capri ler com naturalidade."""
     limpo = re.sub(r"\*+", "", texto)
     limpo = re.sub(r"#+\s*", "", limpo)
     limpo = re.sub(r"\[.*?\]", "", limpo)
@@ -1236,11 +1286,10 @@ def limpar_resposta_ia(texto: str) -> str:
 
 
 def extrair_comando_apos_nome(frase: str) -> tuple[bool, str]:
-    """Verifica se o usuário chamou a Capri e separa o que foi dito depois do nome."""
     palavras_saudacao = ["oi", "olá", "ola", "ei", "hey", "aí", "ai", "ô", "o"]
     for gatilho in GATILHOS_CAPRI:
         if gatilho in frase:
-            resto = frase.replace(gatilho, "").strip()
+            resto = frase.replace(gatilho, "").strip(" ,.!?")
             palavras_resto = [p for p in resto.split() if p not in palavras_saudacao]
             comando_limpo = " ".join(palavras_resto).strip()
             return True, comando_limpo
@@ -1248,7 +1297,6 @@ def extrair_comando_apos_nome(frase: str) -> tuple[bool, str]:
 
 
 def perguntar_gemini_com_pesquisa(pergunta: str, client, modelos: list, historico: list) -> str:
-    """Consulta a API da Gemini com a Pesquisa Google em tempo real ativada."""
     hoje = datetime.now().strftime("%d/%m/%Y")
     instrucao_pesquisa = (
         f"Você é Capri (projeto Capricorn), assistente virtual pessoal do usuário inspirada em Cyberpunk. "
@@ -1258,11 +1306,9 @@ def perguntar_gemini_com_pesquisa(pergunta: str, client, modelos: list, historic
         f"Responda SEMPRE em português do Brasil, em no máximo 1 ou 2 frases curtas, diretas e sem usar asteriscos ou emojis."
     )
 
-    # Mantém as últimas interações para ela lembrar do contexto da conversa
-    conteudos = list(historico[-6:]) + [pergunta] 
+    conteudos = list(historico[-6:]) + [pergunta]
 
     for modelo in modelos:
-        # 1ª Tentativa: Com Pesquisa Google em tempo real ativada
         try:
             config_busca = types.GenerateContentConfig(
                 system_instruction=instrucao_pesquisa,
@@ -1279,9 +1325,7 @@ def perguntar_gemini_com_pesquisa(pergunta: str, client, modelos: list, historic
                 historico.append(pergunta)
                 historico.append(texto_final)
                 return texto_final
-        except Exception as e_busca:
-            print(f"⚠️ [Tentando modo direto no modelo {modelo}]: {e_busca}")
-            # 2ª Tentativa (Fallback): Resposta direta caso o modelo não suporte a tool de busca
+        except Exception:
             try:
                 config_simples = types.GenerateContentConfig(
                     system_instruction=instrucao_pesquisa,
@@ -1297,15 +1341,13 @@ def perguntar_gemini_com_pesquisa(pergunta: str, client, modelos: list, historic
                     historico.append(pergunta)
                     historico.append(texto_final)
                     return texto_final
-            except Exception as e_simples:
-                print(f"❌ [Erro no modelo {modelo}]: {e_simples}")
+            except Exception:
                 continue
 
     return ""
 
 
 def processar_comando_usuario(comando: str, hud: CapriHUD, reconhecedor: sr.Recognizer, client, modelos: list, historico: list):
-    """Executa comandos do PC, diálogo de música no YouTube ou pesquisa na API da Gemini."""
     if any(cmd in comando for cmd in ["desligar sistema", "encerrar sistema", "pode desligar"]):
         falar(hud, "Desligando os sistemas locais. Até logo.")
         hud.desligar_tudo()
@@ -1315,7 +1357,7 @@ def processar_comando_usuario(comando: str, hud: CapriHUD, reconhecedor: sr.Reco
         falar(hud, "Beleza, qualquer coisa é só chamar.")
         return
 
-    # 1. MODO MÚSICA EM 2 ETAPAS (Detecta se já há música aberta e troca na mesma aba)
+    # 1. MODO MÚSICA EM 2 ETAPAS (Troca na mesma aba do YouTube Music)
     gatilhos_pedir_musica = [
         "coloque uma música", "coloca uma música", "colocar uma música",
         "toque uma música", "toca uma música", "tocar uma música",
@@ -1325,8 +1367,8 @@ def processar_comando_usuario(comando: str, hud: CapriHUD, reconhecedor: sr.Reco
         "mudar música", "mude a música", "muda a música"
     ]
     if any(g in comando for g in gatilhos_pedir_musica):
-        hwnd_existente, _ = encontrar_janela_youtube_firefox()
-        if hwnd_existente:
+        hwnd_existente = encontrar_janela_firefox()
+        if hwnd_existente and JA_ABRIU_YOUTUBE:
             falar(hud, "Para qual música você quer trocar?", usar_cache=True)
         else:
             falar(hud, "Qual música você quer ouvir?", usar_cache=True)
@@ -1343,7 +1385,6 @@ def processar_comando_usuario(comando: str, hud: CapriHUD, reconhecedor: sr.Reco
             falar(hud, "Não consegui ouvir o nome da música. Quando quiser é só pedir de novo.")
         return
 
-    # Caso você já fale o nome da música direto na mesma frase
     for prefixo in [
         "coloque a música ", "coloca a música ", "toque a música ", "toca a música ",
         "tocar a música ", "troque para a música ", "mude para a música "
@@ -1355,22 +1396,13 @@ def processar_comando_usuario(comando: str, hud: CapriHUD, reconhecedor: sr.Reco
                 falar(hud, tocar_musica_youtube_firefox(nome_direto))
                 return
 
-    # Caso você já fale o nome da música direto (ex: "coloque a música After Dark")
-    for prefixo in ["coloque a música ", "coloca a música ", "toque a música ", "toca a música ", "tocar a música "]:
-        if prefixo in comando:
-            nome_direto = comando.split(prefixo, 1)[1].strip()
-            if nome_direto:
-                hud.atualizar_estado("ABRINDO YOUTUBE...", "#00FF66", f"Tocando: \"{nome_direto}\"")
-                falar(hud, tocar_musica_youtube_firefox(nome_direto))
-                return
-
-    # 2. Tenta executar comandos locais do PC (Abrir/Fechar Apps, Horas, Tema, Energia, Mute)
+    # 2. Comandos locais do PC (Volume, Mídia, Abrir/Fechar Apps, Horas, Tema, Energia)
     resposta_local = tentar_execucao_instantanea(comando, hud)
     if resposta_local:
         falar(hud, resposta_local)
         return
 
-    # 3. Se for uma pergunta geral, pesquisa usando a API da Gemini + Google Search
+    # 3. Pesquisa na Gemini API + Google Search
     hud.atualizar_estado("PESQUISANDO IA...", "#A855F7", f"Você: \"{comando}\"")
     print(f"🔎 [Pesquisando na Gemini API]: '{comando}'...")
 
@@ -1403,7 +1435,7 @@ def loop_cerebro_capri(hud: CapriHUD):
             historico_conversa = []
 
             falar(hud, "Sistemas da Capri online. Módulos de controle e pesquisa carregados.")
-            hud.atualizar_estado("OUVINDO...", "#00F0FF", "Diga 'Capri' para me chamar...")
+            hud.atualizar_estado("EM ESPERA", "#00F0FF", "Diga 'Capri' para me chamar...")
 
             while hud.rodando and not hud.reiniciar_ia:
                 if hud.pausada:
@@ -1419,26 +1451,24 @@ def loop_cerebro_capri(hud: CapriHUD):
                 chamou_capri, comando_embutido = extrair_comando_apos_nome(frase_ouvida)
 
                 if chamou_capri:
-                    # Etapa 1: Chamou apenas "Capri" -> Responde "Oie" / "Fala, bobão" e aguarda a pergunta
                     if len(comando_embutido) < 3:
                         saudacao = random.choice(RESPOSTAS_CHAMADA)
                         falar(hud, saudacao, usar_cache=True)
 
-                        hud.atualizar_estado("AGUARDANDO COMANDO...", "#00FF66", "Pode falar sua pergunta ou comando...")
+                        hud.atualizar_estado("OUVINDO VOCÊ...", "#00FF66", "Pode falar sua pergunta ou comando...")
                         comando_direto = ouvir_microfone_com_hud(hud, reconhecedor, aguardando_comando=True)
 
-                        # Dentro do if comando_direto:
                         if comando_direto:
                             print(f"🎯 Pergunta/Comando recebido: '{comando_direto}'")
                             hud.atualizar_estado("COMANDO DETECTADO", "#00FF66", f"Você: \"{comando_direto}\"")
                             processar_comando_usuario(comando_direto, hud, reconhecedor, client, modelos, historico_conversa)
                         else:
-                            hud.atualizar_estado("OUVINDO...", "#00F0FF", "Nenhum comando detectado. Diga 'Capri'...")
-
-                    # E no else logo abaixo:
+                            hud.atualizar_estado("EM ESPERA", "#00F0FF", "Nenhum comando detectado. Diga 'Capri'...")
                     else:
                         hud.atualizar_estado("VOZ DETECTADA", "#00FF66", f"Você: \"{comando_embutido}\"")
                         processar_comando_usuario(comando_embutido, hud, reconhecedor, client, modelos, historico_conversa)
+
+                    hud.atualizar_estado("EM ESPERA", "#00F0FF", "Diga 'Capri' para me chamar...")
 
         except Exception as e:
             print(f"[Erro no Loop Principal]: {e}")

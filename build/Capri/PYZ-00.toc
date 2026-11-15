@@ -452,7 +452,7 @@
    'PYMODULE'),
   ('abrir_apps',
    'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\abrir_apps.py',
+   'atividades\\Capricornio\\Capricorn\\src\\abrir_apps.py',
    'PYMODULE'),
   ('aifc',
    'C:\\Users\\4lfr3\\Github projetos e '
@@ -1517,10 +1517,6 @@
    'PYMODULE'),
   ('email.utils',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\email\\utils.py',
-   'PYMODULE'),
-  ('fechar_apps',
-   'C:\\Users\\4lfr3\\Github projetos e '
-   'atividades\\Capricornio\\Capricorn\\fechar_apps.py',
    'PYMODULE'),
   ('fileinput',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\fileinput.py',
@@ -5943,6 +5939,11 @@
   ('speech_recognition.recognizers.whisper_local.whisper',
    'C:\\Users\\4lfr3\\Github projetos e '
    'atividades\\Capricornio\\Capricorn\\.venv\\Lib\\site-packages\\speech_recognition\\recognizers\\whisper_local\\whisper.py',
+   'PYMODULE'),
+  ('src', '-', 'PYMODULE'),
+  ('src.fechar_apps',
+   'C:\\Users\\4lfr3\\Github projetos e '
+   'atividades\\Capricornio\\Capricorn\\src\\fechar_apps.py',
    'PYMODULE'),
   ('ssl',
    'C:\\Users\\4lfr3\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\ssl.py',

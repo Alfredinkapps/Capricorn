@@ -8,6 +8,16 @@ if getattr(sys, "frozen", False):
 else:
     PASTA_BASE = os.path.dirname(os.path.abspath(__file__))
 
+import os
+import sys
+import json
+import subprocess
+
+if getattr(sys, "frozen", False):
+    PASTA_BASE = os.path.dirname(sys.executable)
+else:
+    PASTA_BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 ARQUIVO_CONFIG = os.path.join(PASTA_BASE, "capri_config.json")
 
 # Variações que o microfone costuma entender quando você fala "VS Code"

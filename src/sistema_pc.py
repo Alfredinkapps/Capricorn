@@ -8,6 +8,15 @@ from hud import CapriHUD
 from abrir_apps import verificar_abertura_rapida
 from fechar_apps import verificar_fechamento_rapido
 from spotify_control import ajustar_volume_spotify, controlar_midia_windows
+from dicionario_comandos import (
+    COMANDOS_MIDIA,
+    COMANDOS_VOLUME,
+    COMANDOS_ENERGIA,
+    COMANDOS_INTERFACE,
+    normalizar_frase
+)
+
+_REGEX_NUMERO_VOLUME = re.compile(r"\b(\d{1,3})\b")
 
 
 def mudar_tema_windows(modo: str) -> str:
@@ -19,7 +28,7 @@ def mudar_tema_windows(modo: str) -> str:
         winreg.SetValueEx(chave, "SystemUsesLightTheme", 0, winreg.REG_DWORD, valor)
         winreg.CloseKey(chave)
         ctypes.windll.user32.SendMessageTimeoutW(0xFFFF, 0x001A, 0, "ImmersiveColorSet", 0x0002, 100, 0)
-        return f"Interface visual do sistema alterada para o modo {modo}."
+        return f"Tema do Windows alterado para o modo {modo}."
     except Exception as e:
         return f"Erro ao modificar o tema: {str(e)}"
 
@@ -28,97 +37,91 @@ def controlar_energia_pc(acao: str) -> str:
     acao_limpa = acao.lower().strip()
     try:
         if acao_limpa == "bloquear":
-            threading.Timer(2.0, ctypes.windll.user32.LockWorkStation).start()
-            return "Bloqueando a estação de trabalho."
+            threading.Timer(1.5, ctypes.windll.user32.LockWorkStation).start()
+            return "Bloqueando a tela."
         elif acao_limpa == "suspender":
-            threading.Timer(2.5, lambda: ctypes.windll.powrprof.SetSuspendState(0, 1, 0)).start()
+            threading.Timer(2.0, lambda: ctypes.windll.powrprof.SetSuspendState(0, 1, 0)).start()
             return "Colocando o computador em modo de suspensão."
         elif acao_limpa == "cancelar":
             os.system("shutdown /a")
-            return "Sequência de desligamento abortada. O computador permanecerá ligado."
+            return "Desligamento cancelado. O computador continuará ligado."
         elif acao_limpa == "desligar":
             os.system("shutdown /s /t 10")
-            return "Protocolo de encerramento confirmado. Desligando o computador em 10 segundos."
+            return "Desligando o computador em 10 segundos."
         elif acao_limpa == "reiniciar":
             os.system("shutdown /r /t 10")
             return "Reiniciando o computador em 10 segundos."
-        return f"Comando de energia {acao} não reconhecido."
+        return f"Comando {acao} não reconhecido."
     except Exception as e:
-        return f"Erro ao executar comando de energia: {str(e)}"
+        return f"Erro no comando de energia: {str(e)}"
 
 
 def tentar_execucao_instantanea(frase: str, hud: CapriHUD) -> str:
+    frase_norm = normalizar_frase(frase)
+
     # 1. Volume do Spotify
-    if "volume" in frase or "som" in frase or "música está muito" in frase:
-        if any(p in frase for p in ["máximo", "maximo", "tudo", "100"]):
+    if any(ctx in frase_norm for ctx in COMANDOS_VOLUME["Contexto"]):
+        if any(p in frase_norm for p in COMANDOS_VOLUME["maximo"]):
             return ajustar_volume_spotify("aumentar", 100)
-        if any(p in frase for p in ["mínimo", "minimo", "baixinho"]):
+        if any(p in frase_norm for p in COMANDOS_VOLUME["minimo"]):
             return ajustar_volume_spotify("diminuir", 10)
 
-        numeros = re.findall(r"\b(\d{1,3})\b", frase)
+        numeros = _REGEX_NUMERO_VOLUME.findall(frase_norm)
         if numeros:
             return ajustar_volume_spotify("definir", int(numeros[0]))
 
-        if any(p in frase for p in ["aumentar", "aumenta", "aumente", "subir", "sobe", "mais alto"]):
+        if any(p in frase_norm for p in COMANDOS_VOLUME["aumentar"]):
             return ajustar_volume_spotify("aumentar")
-        if any(p in frase for p in ["abaixar", "abaixa", "abaixe", "diminuir", "diminui", "diminua", "baixar", "baixa", "muito alta", "muito alto"]):
+        if any(p in frase_norm for p in COMANDOS_VOLUME["diminuir"]):
             return ajustar_volume_spotify("diminuir")
 
-    # 2. Reprodução de mídia
-    if any(cmd in frase for cmd in ["pausar música", "pausa a música", "pause a música", "pausar spotify", "pausar reprodução", "parar música", "para a música"]):
-        return controlar_midia_windows("pausar")
-
-    if any(cmd in frase for cmd in ["continuar música", "continue a música", "continua a música", "retomar música", "voltar a música", "despausar", "dar play", "continuar spotify"]):
-        return controlar_midia_windows("continuar")
-
-    if any(cmd in frase for cmd in ["próxima música", "pular música", "passar música", "próxima faixa"]):
-        return controlar_midia_windows("proxima")
-
-    if any(cmd in frase for cmd in ["música anterior", "voltar faixa", "faixa anterior"]):
-        return controlar_midia_windows("anterior")
+    # 2. Reprodução de mídia (Pause / Play / Próxima / Anterior)
+    for acao_midia, gatilhos in COMANDOS_MIDIA.items():
+        if any(cmd in frase_norm for cmd in gatilhos):
+            return controlar_midia_windows(acao_midia)
 
     # 3. Energia, Bloqueio e Suspensão
-    if any(p in frase for p in ["cancelar desligamento", "cancele o desligamento", "abortar desligamento", "não desligar", "nao desligar"]):
+    if any(p in frase_norm for p in COMANDOS_ENERGIA["cancelar"]):
         return controlar_energia_pc("cancelar")
 
-    if any(v in frase for v in ["bloquear", "bloqueia", "bloqueie", "trancar", "tranca", "tranque"]) and "desbloquear" not in frase:
+    if any(v in frase_norm for v in COMANDOS_ENERGIA["bloquear"]) and "desbloquear" not in frase_norm:
         return controlar_energia_pc("bloquear")
 
-    if any(v in frase for v in ["suspender", "suspende", "suspenda", "suspensão", "suspensao", "hibernar", "hiberna", "dormir"]):
+    if any(v in frase_norm for v in COMANDOS_ENERGIA["suspender"]):
         return controlar_energia_pc("suspender")
 
-    alvos_pc = ["computador", "pc", "p c", "notebook", "máquina", "maquina", "sistema"]
-    if any(v in frase for v in ["desligar", "desliga", "desligue"]) and any(a in frase for a in alvos_pc):
+    if any(v in frase_norm for v in COMANDOS_ENERGIA["verbos_desligar"]) and any(a in frase_norm for a in COMANDOS_ENERGIA["alvos_pc"]):
         return controlar_energia_pc("desligar")
 
-    if any(v in frase for v in ["reiniciar", "reinicia", "reinicie"]) and any(a in frase for a in alvos_pc):
+    if any(v in frase_norm for v in COMANDOS_ENERGIA["verbos_reiniciar"]) and any(a in frase_norm for a in COMANDOS_ENERGIA["alvos_pc"]):
         return controlar_energia_pc("reiniciar")
 
     # 4. Interface, Mute, Horas e Tema
-    if any(cmd in frase for cmd in ["abrir configurações", "abra as configurações", "configurar capri", "configurações"]):
+    if any(cmd in frase_norm for cmd in COMANDOS_INTERFACE["configuracoes"]):
         hud.root.after(0, hud.abrir_configuracoes)
-        return "Abrindo a central de configurações e aplicativos."
+        return "Abrindo a central de configurações."
 
-    if any(cmd in frase for cmd in ["mutar", "silenciar", "modo silencioso", "fique quieta", "pausar escuta"]):
+    if any(cmd in frase_norm for cmd in COMANDOS_INTERFACE["mutar"]):
         if not hud.pausada:
             hud.root.after(0, hud.alternar_pausa)
-        return "Microfone silenciado. Clique no botão da interface quando quiser me chamar novamente."
+        return "Microfone silenciado."
 
-    if any(p in frase for p in ["que horas são", "que hora é", "horário", "que dia é hoje", "horas"]):
+    if any(p in frase_norm for p in COMANDOS_INTERFACE["horas"]):
         agora = datetime.now()
         return f"Agora são {agora.strftime('%H horas e %M minutos')}."
 
-    if "tema" in frase or "modo" in frase or "cor" in frase:
-        if "escuro" in frase or "noturno" in frase or "dark" in frase:
+    if any(p in frase_norm for p in ("tema", "modo", "cor")):
+        if any(t in frase_norm for t in ("escuro", "noturno", "dark")):
             return mudar_tema_windows("escuro")
-        elif "claro" in frase or "light" in frase:
+        elif any(t in frase_norm for t in ("claro", "light", "dia")):
             return mudar_tema_windows("claro")
 
-    resposta_fechar = verificar_fechamento_rapido(frase)
+    # 5. Fechar ou Abrir Aplicativos
+    resposta_fechar = verificar_fechamento_rapido(frase_norm)
     if resposta_fechar:
         return resposta_fechar
 
-    resposta_abrir = verificar_abertura_rapida(frase)
+    resposta_abrir = verificar_abertura_rapida(frase_norm)
     if resposta_abrir:
         return resposta_abrir
 

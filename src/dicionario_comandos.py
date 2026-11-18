@@ -2,69 +2,97 @@ import re
 import unicodedata
 
 # =====================================================================
-# 1. GATILHOS DE CHAMADA DA CAPRI (INCLUINDO "CAP")
+# 1. GATILHOS DE CHAMADA DA CAPRI (OTIMIZADOS PARA VOSK OFFLINE)
 # =====================================================================
-
-# Ordenados dos nomes completos para os curtos ("cap" e "kep" no final)
 GATILHOS_CAPRI = (
     "capricórnio", "capricornio", "capricorn", "capricho",
     "capri", "cápri", "cabri", "gabri", "kpri", "capre", "kapri",
-    "ca pri", "capi", "carpi", "capim", "capr", "capry", "kapry",
-    "cap", "kep"
+    "ca pri", "cá pri", "cabi", "cabe", "capi", "carpi", "capim",
+    "capr", "capry", "kapry", "captura", "cap", "kep"
 )
 
-# Expressões regulares de palavra inteira para cada gatilho (evita cortar "capri" no meio)
 _REGEX_GATILHOS_CAPRI = [
     (gatilho, re.compile(rf"\b{re.escape(gatilho)}\b", re.IGNORECASE))
     for gatilho in GATILHOS_CAPRI
 ]
 
 PALAVRAS_SAUDACAO_INICIAL = {
-    "oi", "olá", "ola", "ei", "hey", "aí", "ai", "ô", "o", "ou",
+    "oi", "olá", "ola", "ei", "hey", "aí", "ai", "é", "o", "ou",
     "eai", "eae", "fala", "opa", "bom", "dia", "boa", "tarde", "noite",
     "mano", "chefe", "linda", "querida", "assistente", "por", "favor", "pfv"
 }
 
 # =====================================================================
-# 2. CORRETOR FONÉTICO (Corrige o que o microfone entende errado)
+# 2. CORRETOR FONÉTICO (Corrige o que o Vosk e o microfone entendem errado)
 # =====================================================================
-
 CORRECOES_FONETICAS = {
+    # Variações comuns do nome Capri no Vosk em início de frase
+    r"\bcabe\s+a\b": "capri",
+    r"\bcá\s+abrir\b": "capri abrir",
+    r"\bca\s+abrir\b": "capri abrir",
+
     # Jogos e Launchers
     r"\bc\s*s\s*2\b": "cs2",
     r"\bc\s*s\s*dois\b": "cs2",
     r"\bcs\s*dois\b": "cs2",
+    r"\bc[eê]\s*esse\s*dois\b": "cs2",
+    r"\bse\s*esse\s*dois\b": "cs2",
+    r"\bseis\s*dois\b": "cs2",
     r"\bcounter\s*strike\s*(?:2|dois)?\b": "cs2",
     r"\bcontra\s*strike\b": "cs2",
     r"\bvalor\s*ante\b": "valorant",
+    r"\bvalo\s*rante\b": "valorant",
+    r"\bvalor\s*a\b": "valorant",
     r"\bvalora\b": "valorant",
     r"\bistim\b": "steam",
     r"\bestim\b": "steam",
     r"\bestin\b": "steam",
     r"\bstim\b": "steam",
+    r"\beste\s*em\b": "steam",
+    r"\bisso\s*tim\b": "steam",
     r"\bépoca\s*games\b": "epic games",
     r"\bepic\s*game\b": "epic games",
+    r"\bépico\s*games\b": "epic games",
+
     # Programas e Dev
     r"\bv\s*s\s*code\b": "vscode",
     r"\bvs\s*cold\b": "vscode",
     r"\bvê\s*esse\s*code\b": "vscode",
+    r"\bvê\s*esse\s*c[oó]digo\b": "vscode",
+    r"\bver\s*esse\s*c[oó]digo\b": "vscode",
+    r"\bvesse\s*code\b": "vscode",
     r"\bvesicode\b": "vscode",
     r"\bvisual\s*studio\s*code\b": "vscode",
+    r"\bvisual\s*est[uú]dio\b": "vscode",
     r"\bvisual\s*code\b": "vscode",
+
     # Música e Comunicação
     r"\bespotifai\b": "spotify",
     r"\bspot\s*fai\b": "spotify",
     r"\bsportfy\b": "spotify",
     r"\bspotifai\b": "spotify",
     r"\bespotfy\b": "spotify",
+    r"\besporte\s*faz\b": "spotify",
+    r"\besporte\s*vai\b": "spotify",
+    r"\bpote\s*faz\b": "spotify",
+    r"\bpode\s*faz\b": "spotify",
     r"\bdiscorde\b": "discord",
     r"\bdesconcorde\b": "discord",
     r"\bdis\s*cord\b": "discord",
-    # Navegadores
+    r"\bdisse\s*corte\b": "discord",
+    r"\bdes\s*corte\b": "discord",
+    r"\bdiz\s*corte\b": "discord",
+
+    # Navegadores e Sistema
     r"\bfire\s*fox\b": "firefox",
     r"\bfai\s*fox\b": "firefox",
+    r"\bfai\s*foco\b": "firefox",
+    r"\bfaz\s*foco\b": "firefox",
     r"\bcrome\b": "chrome",
+    r"\bcromo\b": "chrome",
     r"\bgugou\s*crome\b": "chrome",
+    r"\bcom\s*figura\s*s[oõ]es\b": "configurações",
+    r"\bconfigura\s*s[oõ]es\b": "configurações",
 }
 
 NUMEROS_POR_EXTENSO = {
@@ -79,11 +107,9 @@ _REGEX_NUMEROS = [(re.compile(padrao, re.IGNORECASE), sub) for padrao, sub in NU
 _REGEX_ESPACOS = re.compile(r"\s+")
 _REGEX_LETRA_NUMERO = re.compile(r"([a-zA-Z])\s+(\d)")
 
-
 # =====================================================================
 # 3. DICIONÁRIO MASSIVO DE INTENÇÕES E COMANDOS
 # =====================================================================
-
 VERBOS_ABRIR = (
     "abrir", "abra", "abre", "abri", "iniciar", "inicia", "inicie",
     "executar", "executa", "execute", "rodar", "roda", "rode",
@@ -252,52 +278,40 @@ VERBOS_PEDIR_MUSICA = (
     "reproduzir", "solta", "lança", "lanca", "põe", "poe"
 )
 
-
 # =====================================================================
 # 4. FUNÇÕES DE NORMALIZAÇÃO E EXTRAÇÃO RÁPIDA
 # =====================================================================
-
 def remover_acentos(texto: str) -> str:
     return "".join(
         c for c in unicodedata.normalize("NFD", texto)
         if unicodedata.category(c) != "Mn"
     )
 
-
 def normalizar_frase(frase: str) -> str:
     """Limpa a frase, corrige erros fonéticos do microfone e padroniza números."""
     if not frase:
         return ""
-
     texto = frase.lower().strip()
-
     for regex, substituto in _REGEX_CORRECOES:
         texto = regex.sub(substituto, texto)
-
     for regex, numero in _REGEX_NUMEROS:
         texto = regex.sub(numero, texto)
-
     texto = _REGEX_LETRA_NUMERO.sub(r"\1\2", texto)
     texto = _REGEX_ESPACOS.sub(" ", texto)
     return texto.strip()
 
-
 def extrair_comando_apos_nome(frase: str) -> tuple[bool, str]:
     """Detecta qualquer variação do nome Capri (incluindo 'cap') e separa o comando limpo."""
     frase_norm = normalizar_frase(frase)
-
     for _, regex_gatilho in _REGEX_GATILHOS_CAPRI:
         match = regex_gatilho.search(frase_norm)
         if match:
             resto = frase_norm[match.end():].strip(" ,.!?-")
             if not resto:
                 resto = frase_norm[:match.start()].strip(" ,.!?-")
-
             palavras = resto.split()
             while palavras and palavras[0] in PALAVRAS_SAUDACAO_INICIAL:
                 palavras.pop(0)
-
             comando_limpo = " ".join(palavras).strip()
             return True, comando_limpo
-
     return False, ""

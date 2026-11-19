@@ -1,136 +1,121 @@
-# ⚡ CAPRI // PROJECT CAPRICORN `v0.1.4`
+# ⚡ CAPRI — Assistente Virtual Cyberpunk (`v0.1.5`)
 
-> **Assistente Virtual Tática Cyberpunk para Windows** com arquitetura 100% modular, menu de configurações inspirado em *Cyberpunk 2077*, dicionário fonético inteligente, integração nativa com o **Spotify Desktop**, cadastro manual de executáveis (`.exe`) por voz, síntese vocal fluida sem pausas artificiais e pesquisa em tempo real via Google Gemini.
+![Versão](https://img.shields.io/badge/versão-0.1.5%20pre--alpha-F06A82?style=for-the-badge)
+![Python](https://img.shields.io/badge/Python-3.11%2B-54F2F2?style=for-the-badge&logo=python&logoColor=white)
+![Plataforma](https://img.shields.io/badge/Windows-10%20%2F%2011-9B72FF?style=for-the-badge&logo=windows&logoColor=white)
+![Vosk Offline](https://img.shields.io/badge/Voz%20STT-100%25%20Offline%20(Vosk)-A3E635?style=for-the-badge)
 
----
-
-## 🚀 O que há de novo na versão `0.1.4`
-
-* 🧠 **Novo Módulo `dicionario_comandos.py` (Vocabulário Expandido & Correção Fonética):**
-  * **Corretor Fonético Automático:** Corrige instantaneamente termos que o microfone costuma transcrever errado em português (ex: *"espotifai"* $\rightarrow$ `spotify`, *"vê esse code"* $\rightarrow$ `vscode`, *"c s dois"* $\rightarrow$ `cs2`, *"valor ante"* $\rightarrow$ `valorant`, *"istim"* $\rightarrow$ `steam`).
-  * **Gatilho Rápido `"Cap"`:** Além de *"Capri"* e *"Capricorn"*, a assistente agora reconhece a chamada curta **`"Cap"`** com verificação de palavra inteira via Regex, sem cortar comandos.
-  * **Centenas de Variações Naturais:** Compreende gírias, sinônimos e números falados por extenso para abrir/fechar programas, controlar mídia, ajustar volume e gerenciar energia do PC.
-
-* 🎨 **Menu de Configurações Cyberpunk 2077 (Layout PC):**
-  * Interface `CAPRI // SYSTEM SETTINGS` totalmente redesenhada com paleta **Cyberpunk** (fundo vinho escuro `#120912`, detalhes em vermelho-coral `#E8504B` e destaques em ciano neon `#54F2F2`).
-  * Navegação limpa para computador dividida em 3 abas superiores (**`APLICATIVOS`**, **`APIS & VOZ`** e **`SISTEMA`**), switches deslizantes chanfrados (`ON` / `OFF`), botão lateral chanfrado **`+ ADICIONAR .EXE`** e rodapé direto com **`SALVAR E APLICAR`**.
-
-* 🧹 **Scanner Inteligente de Aplicativos (Sem Lixo do Sistema):**
-  * Substituição da varredura bruta do Menu Iniciar por um filtro inteligente que ignora atalhos administrativos e secundários do Windows (como *ODBC Data Sources*, *Narrator*, *Node.js documentation* e *Navegação privativa*), exibindo apenas aplicativos reais do dia a dia, utilitários nativos essenciais (`Notepad`, `CMD`, `Calculadora`, `Explorador de Arquivos`, `Paint`, `Gerenciador de Tarefas`) e 100% dos `.exe` cadastrados pelo usuário.
-
-* 🎙️ **Voz Contínua & Otimização de Performance ($O(1)$):**
-  * **Fim das Respiradas Artificiais:** Remoção das quebras forçadas e ativação de `normalize: True` na API da Fish Audio para uma fala contínua, natural e direta (com respostas de chamada limpas: *"Oie."*, *"Fala."*, *"Diga lá."*, *"Tô ouvindo, fala aí."*).
-  * **Sessão HTTP Persistente:** Reaproveitamento de conexão via `requests.Session()` para reduzir a latência na geração de áudio.
-  * **Cache de Apps em Memória:** O arquivo `capri_config.json` só é relido do disco quando sofre modificação real (`os.path.getmtime`), tornando a abertura e o fechamento de apps instantâneos.
-
-* 🖼️ **Identidade Visual Unificada (`assets/`):**
-  * Suporte nativo à pasta `assets/` com conversão automática de `icone.png` para `icone.ico` multi-resolução ($16 \times 16$ até $256 \times 256$), aplicando o símbolo personalizado no executável `Capri.exe`, na barra de tarefas, no Gerenciador de Tarefas (`AppUserModelID`), nas janelas e na bandeja do sistema.
+**Capri** (Projeto *Capricorn*) é uma assistente virtual pessoal para Windows inspirada na estética Cyberpunk. Ela combina controle local instantâneo do computador, reconhecimento de voz **100% offline**, sprites dinâmicos com sincronia labial em tempo real e integração com múltiplos provedores de Inteligência Artificial.
 
 ---
 
-## 📂 Estrutura Modular do Projeto
+## ✨ Novidades da Versão `0.1.5`
 
-```text
-Capricorn/
-├── assets/                     # Ícone oficial da Capri (icone.png / icone.ico)
-├── cache/                      # Áudios de resposta rápida gerados (ignorado pelo Git)
-├── src/                        # Código-fonte modularizado da Capri (9 módulos)
-│   ├── capri_core.py           # Ponto de entrada principal (inicializa threads e loops)
-│   ├── hud.py                  # HUD principal, Bandeja, Filtro de Apps e Menu Cyberpunk 2077
-│   ├── dicionario_comandos.py  # Dicionário massivo de intenções, corretor fonético e gatilhos
-│   ├── voz.py                  # Escuta com VAD, Sessão HTTP persistente, Fish Audio TTS e Cache
-│   ├── cerebro_ia.py           # Roteador de comandos, Cadastro de .exe por voz e Gemini API
-│   ├── spotify_control.py      # Busca, Play automático e Volume exclusivo do Spotify Desktop
-│   ├── sistema_pc.py           # Energia (Bloquear, Suspender, Desligar), Tema e Relógio
-│   ├── abrir_apps.py           # Abertura rápida de programas com cache em memória
-│   └── fechar_apps.py          # Encerramento forçado de processos (taskkill)
-├── .gitignore                  # Proteção de chaves de API, cache e arquivos temporários
-├── capri_config.json           # Chaves de API e lista de aplicativos/apelidos (gerado localmente)
-└── README.md                   # Documentação oficial do projeto
-```
+- **🎨 Novo HUD Cyberpunk Limpo & Monitor CRT:** Interface remodelada com linhas de varredura (*scanlines*), cantoneiras em lilás, emblema dinâmico de estado (`CAPRI // ...`) e card de telemetria com barra animada de atividade vocal. Os controles essenciais (**`MIC ON`/`MUTADA`**, **`⚙ CONFIG`** e minimizar para bandeja) ficam acessíveis diretamente no card e na barra inferior.
+- **💬 Barra de Pesquisa & Chat Funcional (`Conversar com Capri...`):** Digite comandos locais (ex: *"abrir spotify"*, *"que horas são"*) ou perguntas abertas para a IA diretamente pela interface — funcionando inclusive quando o microfone estiver silenciado.
+- **🎭 Motor Completo de Sprites Animados (`GerenciadorSpritesCapri`):**
+  - **Introdução animada** ao iniciar (`01-signal` até `07-ready`).
+  - **Sincronia labial (Lip-Sync)** em tempo real acompanhando a cadência da fala (`mouth_small`, `mouth_round`, `mouth_wide`).
+  - **Piscadas naturais e micro-expressões** enquanto em espera, além de reações contextuais (*pensando*, *ouvindo*, *dormindo*, *aceno* e *modo música* com notas flutuantes).
+  - **Interação de carinho (*Headpat*):** clicar na personagem exibe animação de carinho com efeito de coração.
+  - **Seletor de Poses & Modo Mascote:** escolha entre 8 poses padrão ou ative o recorte transparente direto na aba *Sistema*.
+- **🎙️ Reconhecimento de Voz 100% Offline (Vosk):** Transcrição local via **Vosk** (`vosk-model-small-pt-0.3`, baixado automaticamente na 1ª execução para `cache/`), com análise de múltiplas hipóteses, corretor fonético expandido em `dicionario_comandos.py` e fallback automático para reconhecimento online.
+- **🧠 Suporte Multi-IA & Prioridade `gemini-3.5-flash-lite`:** Alterne facilmente entre **Google Gemini** (com busca na web e fallback automático entre os modelos `3.5-flash-lite`, `3.5-flash`, `3.0-flash-lite`, `3.0-flash`, `2.5-flash`, `2.5-flash-lite`, `2.0-flash` e `flash-latest`), **Claude** e **DeepSeek**.
+- **🔊 Cache Permanente de Voz:** Todas as falas geradas via **Fish Audio** ou **Edge-TTS** ficam armazenadas permanentemente na pasta `cache/` por ID de voz, garantindo resposta imediata e economia de requisições.
+- **📦 Compilação Otimizada com Pasta `bin/`:** Executável `Capri.exe` empacotado em modo `--onedir` com dependências isoladas em `bin/`, mantendo o executável leve, rápido para abrir e dentro dos limites nativos do GitHub.
 
 ---
 
 ## 🛠️ Funcionalidades Principais
 
-### 1. 🎵 Controle Total do Spotify Desktop
-* **Busca e Reprodução Direta:** Peça *"Capri, coloque uma música"* ou *"Cap, toca Numb"*. Ela aciona o aplicativo nativo do Spotify (`spotify:search:`), seleciona o melhor resultado e inicia a faixa sem abrir abas de navegador.
-* **Volume Independente:** Peça *"Volume em 30%"*, *"Abaixar volume"* ou *"Volume no máximo"*. A Capri ajusta apenas o volume interno do processo `spotify.exe` e devolve o foco para a janela ou jogo que você estava usando.
-* **Controle de Faixas:** Comandos instantâneos para pausar, retomar, pular para a próxima música ou voltar à faixa anterior.
-
-### 2. 🎮 Cadastro Manual de Jogos e Programas (`.exe`) + Filtro Limpo
-* **Via Menu Cyberpunk:** Abra as configurações (`⚙`) e clique no botão chanfrado **`+ ADICIONAR .EXE`**, escolha o arquivo `.exe` no Windows Explorer e defina o gatilho de voz (ex: `CS2`, `Valorant`, `Blender`).
-* **Via Comando de Voz:** Diga *"Capri, adicionar executável"*. Ela abrirá o seletor de arquivos do Windows e perguntará em voz alta: **"Como você quer chamar esse executável?"**.
-* **Catálogo Limpo:** Apenas aplicativos reais instalados no PC e utilitários essenciais do Windows aparecem na lista, organizados com switches `ON` (ciano) e `OFF` (coral).
-
-### 3. 💻 Controle do Sistema Windows (Execução Instantânea)
-* **Energia e Segurança:** Bloquear estação de trabalho (`LockWorkStation`), suspender o computador (`powrprof.dll`), desligar/reiniciar com timer de segurança de 10 segundos e comando para cancelar desligamento.
-* **Personalização:** Alternância instantânea entre **Modo Escuro** e **Modo Claro** do Windows via Registro.
-* **Execução em Segundo Plano:** Minimiza para a Bandeja do Sistema (*System Tray*) com ícone personalizado e opção de iniciar automaticamente junto com o Windows.
-
-### 4. 🧠 Cérebro Gemini + Pesquisa Google em Tempo Real
-* Integrada ao modelo `gemini-2.5-flash` com a ferramenta `GoogleSearch` ativada para responder perguntas sobre fatos atuais, clima, cotações, notícias e curiosidades com respostas curtas, diretas e sem marcações poluídas.
+| Módulo | Recursos |
+| :--- | :--- |
+| **Controle do PC** | Abrir e fechar programas nativos, jogos e executáveis personalizados (`.exe`, `.lnk`, `.bat`) cadastrados por voz ou via interface. |
+| **Spotify & Mídia** | Tocar/trocar músicas diretamente no Spotify Desktop, pausar, retomar, avançar/voltar faixas e ajustar volume do sistema. |
+| **Energia & Sistema** | Bloquear tela, suspender, reiniciar, desligar (com cancelamento), consultar horas e iniciar automaticamente com o Windows. |
+| **Central de Configurações** | Painel temático com 3 abas (**Aplicativos**, **APIs & Voz**, **Sistema**), scanner automático do Menu Iniciar e registro rápido de novos `.exe`. |
+| **Bandeja do Sistema** | Execução discreta em segundo plano via ícone na bandeja do Windows (`pystray`). |
 
 ---
 
-## 🎙️ Guia Rápido de Comandos de Voz
+## 📂 Estrutura do Projeto
 
-| Categoria | Exemplos de Comandos | Ação Executada |
-| :--- | :--- | :--- |
-| **Chamada (Wake Word)** | *"Capri"* / *"Cap"* / *"Oi Capri"* | Ativa a escuta com resposta rápida em cache |
-| **Spotify (Música)** | *"Coloque uma música"* / *"Trocar a música"* | Pergunta qual música você quer e dá Play no Spotify |
-| **Spotify (Direto)** | *"Coloque a música Numb"* / *"Toca Linkin Park"* | Busca e toca a faixa imediatamente no Spotify |
-| **Volume Spotify** | *"Volume em 30%"* / *"Abaixar volume"* / *"Som no máximo"* | Ajusta o volume interno exclusivo do app Spotify |
-| **Mídia** | *"Pausar música"* / *"Continuar música"* / *"Próxima música"* | Controla a reprodução atual |
-| **Cadastrar `.exe`** | *"Adicionar executável"* / *"Cadastrar jogo"* | Abre o seletor de `.exe` e pergunta o apelido por voz |
-| **Abrir / Fechar** | *"Abrir CS2"* / *"Abrir VS Code"* / *"Fechar Discord"* | Inicia ou encerra o aplicativo autorizado |
-| **Energia / Tela** | *"Bloquear o PC"* / *"Suspender o computador"* | Tranca a tela do Windows ou suspende a máquina |
-| **Desligamento** | *"Desligar o computador"* / *"Cancelar desligamento"* | Agenda desligamento em 10s ou aborta a contagem |
-| **Sistema** | *"Modo escuro"* / *"Modo claro"* / *"Que horas são?"* | Altera o tema do Windows ou informa o horário atual |
-| **Interface** | *"Abrir configurações"* / *"Fique quieta"* | Abre o painel Cyberpunk da Capri ou silencia o microfone |
-
----
-
-## ⚙️ Instalação e Uso
-
-### 1. Pré-requisitos
-* **Windows 10 ou 11** (64 bits)
-* **Python 3.10 ou superior**
-* **Spotify Desktop** instalado no computador (para os comandos de música)
-
-### 2. Instalando as dependências
-No terminal PowerShell, dentro da pasta raiz do projeto:
-
-```powershell
-python -m pip install google-genai pygame-ce sounddevice numpy edge-tts SpeechRecognition pystray Pillow requests
-```
-
-### 3. Executando a Capri em modo de desenvolvimento
-
-```powershell
-python src/capri_core.py
-```
-
-### 4. Compilando o executável (`Capri.exe`) com Ícone Personalizado
-Coloque a imagem do seu ícone dentro da pasta **`assets/`** e execute os comandos abaixo no PowerShell para converter o ícone e gerar o **`Capri.exe`** na raiz do projeto:
-
-```powershell
-taskkill /F /IM "Capri.exe" /T 2>$null
-
-python -c "import os, glob; from PIL import Image; arqs = [f for f in glob.glob('assets/*.*') if not f.lower().endswith('.ico')] or glob.glob('assets/*.ico'); img = Image.open(arqs[0]).convert('RGBA').resize((256, 256), Image.Resampling.LANCZOS); img.save('assets/icone.ico', format='ICO', sizes=[(256,256),(128,128),(64,64),(48,48),(32,32),(16,16)])"
-
-$caminhoIcone = Join-Path $PWD "assets\icone.ico"
-python -m PyInstaller --noconsole --onefile --clean --paths src --icon="$caminhoIcone" --add-data "assets;assets" --distpath . --name "Capri" src/capri_core.py
-Remove-Item -Recurse -Force build, Capri.spec -ErrorAction SilentlyContinue
+```text
+Capricorn/
+├── Capri.exe                 # Executável principal (requer as pastas bin/ e assets/ ao lado)
+├── bin/                      # Bibliotecas e dependências compiladas (PyInstaller --contents-directory)
+├── assets/                   # Sprites animados (capri/, default/, fonts/) e ícones do HUD
+├── cache/                    # Criado automaticamente: modelo Vosk offline e cache permanente de falas (.mp3)
+├── capri_config.json         # Configurações locais, chaves de API e lista de aplicativos ativos
+├── src/
+│   ├── capri_core.py         # Núcleo principal (loop de voz + fila da barra de pesquisa)
+│   ├── hud.py                # Interface Cyberpunk, motor de sprites, bandeja e configurações
+│   ├── voz.py                # Captura de áudio, Vosk offline, Fish Audio / Edge-TTS e Lip-Sync
+│   ├── cerebro_ia.py         # Integração Gemini / Claude / DeepSeek e roteamento de comandos
+│   ├── dicionario_comandos.py# Gatilhos de voz, intenções e corretor fonético para Vosk
+│   ├── sistema_pc.py         # Execução instantânea de comandos locais do Windows
+│   ├── abrir_apps.py         # Gerenciamento e execução de aplicativos mapeados
+│   └── spotify_control.py    # Automação de reprodução no Spotify Desktop
+└── README.md
 ```
 
 ---
 
-## 🔑 Configuração Inicial
+## 🚀 Como Usar
 
-Na primeira execução, clique no botão **`⚙`** no HUD (ou diga *"Capri, abrir configurações"*):
+### Opção 1: Executar diretamente pelo `Capri.exe` (Recomendado)
+1. Clone ou baixe o repositório mantendo juntos na mesma pasta o **`Capri.exe`**, a pasta **`bin/`** e a pasta **`assets/`**.
+2. Dê um duplo clique em **`Capri.exe`**.
+3. Na primeira execução:
+   - A Capri baixará automaticamente o modelo offline em português do Vosk (~31 MB) para a pasta `cache/`.
+   - A **Central de Configurações** abrirá automaticamente caso nenhuma chave de API esteja configurada. Insira sua chave (**Gemini**, **Claude** ou **DeepSeek**) e, opcionalmente, suas credenciais do **Fish Audio** na aba **APIs & Voz**.
+4. Pronto! Chame **"Capri"** no microfone ou digite qualquer comando/pergunta na barra **"Conversar com Capri..."**.
 
-1. Acesse a aba **`APIS & VOZ`** e insira sua **Gemini API Key** (obrigatória para perguntas gerais).
-2. *(Opcional)* Insira sua **Fish Audio API Key** e **Fish Audio Voice ID** para utilizar voz clonada personalizada (caso deixe em branco, a Capri utilizará automaticamente a voz neural nativa em Português).
-3. Na aba **`APLICATIVOS`**, ative os switches **`ON`** nos aplicativos que a Capri tem permissão para abrir/fechar ou clique em **`+ ADICIONAR .EXE`** à esquerda para registrar seus jogos e programas favoritos.
-4. Clique em **`SALVAR E APLICAR`**.
+### Opção 2: Rodar a partir do código-fonte (Python)
+1. Crie e ative um ambiente virtual:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+2. Instale as dependências necessárias:
+   ```powershell
+   pip install google-genai vosk sounddevice numpy pygame edge-tts SpeechRecognition requests pillow pystray pyinstaller
+   ```
+3. Inicie a assistente:
+   ```powershell
+   python src/capri_core.py
+   ```
+
+---
+
+## ⚙️ Compilando uma Nova Build (`Capri.exe` + `bin/`)
+
+Caso faça alterações no código-fonte e queira atualizar o executável mantendo o tamanho reduzido para o GitHub:
+
+```powershell
+taskkill /F /IM Capri.exe /T 2>$null
+Remove-Item -Recurse -Force build, dist, bin -ErrorAction SilentlyContinue
+Remove-Item -Force Capri.exe, Capri.spec -ErrorAction SilentlyContinue
+
+$icone = if (Test-Path "assets\default\app.ico") { "assets/default/app.ico" } else { "assets/icone.ico" }
+pyinstaller --noconfirm --onedir --noconsole --clean --name "Capri" --contents-directory "bin" --icon="$icone" --paths "src" --collect-all vosk --distpath "dist" src/capri_core.py
+
+Move-Item -Path "dist\Capri\Capri.exe" -Destination "." -Force
+Move-Item -Path "dist\Capri\bin" -Destination "." -Force
+Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
+```
+
+> **Nota:** Mantenha sempre `Capri.exe`, `bin/` e `assets/` no mesmo diretório ao mover ou distribuir a aplicação.
+
+---
+
+## 🧠 Desempenho & Uso de Memória
+
+- **Uso basal:** ~120 MB a 280 MB de RAM em espera com sprites cacheados e modelo compacto do Vosk.
+- **Teto elástico:** liberado para utilizar até ~1 GB de RAM sob demanda caso modelos maiores de transcrição local sejam ativados em `src/voz.py`, com coleta de lixo automática (`gc.collect()`).
+
+---
+
+## 📄 Notas de Privacidade
+
+- O arquivo `capri_config.json` armazena suas chaves de API localmente. Certifique-se de mantê-lo no `.gitignore` antes de publicar atualizações em repositórios públicos.

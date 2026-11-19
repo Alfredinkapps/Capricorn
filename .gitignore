@@ -30,3 +30,7 @@ tempCodeRunnerFile.py
 *.bak
 Thumbs.db
 Desktop.ini
+
+!bin/
+!bin/**/
+!bin/**

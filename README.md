@@ -1,6 +1,6 @@
 # ⚡ CAPRI — Assistente Virtual Cyberpunk (`v0.2.0`)
 
-![Versão](https://img.shields.io/badge/versão-0.1.5%20pre--alpha-F06A82?style=for-the-badge)
+![Versão](https://img.shields.io/badge/versão-0.2.0%20pre--alpha-F06A82?style=for-the-badge)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)
 ![Architecture](https://img.shields.io/badge/Architecture-Hybrid%20Local%20%2B%20Cloud-9B72FF)

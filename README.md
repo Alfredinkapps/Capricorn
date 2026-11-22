@@ -1,121 +1,143 @@
-# ⚡ CAPRI — Assistente Virtual Cyberpunk (`v0.1.5`)
+# ⚡ CAPRI — Assistente Virtual Cyberpunk (`v0.2.0`)
 
 ![Versão](https://img.shields.io/badge/versão-0.1.5%20pre--alpha-F06A82?style=for-the-badge)
-![Python](https://img.shields.io/badge/Python-3.11%2B-54F2F2?style=for-the-badge&logo=python&logoColor=white)
-![Plataforma](https://img.shields.io/badge/Windows-10%20%2F%2011-9B72FF?style=for-the-badge&logo=windows&logoColor=white)
-![Vosk Offline](https://img.shields.io/badge/Voz%20STT-100%25%20Offline%20(Vosk)-A3E635?style=for-the-badge)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white)
+![Architecture](https://img.shields.io/badge/Architecture-Hybrid%20Local%20%2B%20Cloud-9B72FF)
 
-**Capri** (Projeto *Capricorn*) é uma assistente virtual pessoal para Windows inspirada na estética Cyberpunk. Ela combina controle local instantâneo do computador, reconhecimento de voz **100% offline**, sprites dinâmicos com sincronia labial em tempo real e integração com múltiplos provedores de Inteligência Artificial.
-
----
-
-## ✨ Novidades da Versão `0.1.5`
-
-- **🎨 Novo HUD Cyberpunk Limpo & Monitor CRT:** Interface remodelada com linhas de varredura (*scanlines*), cantoneiras em lilás, emblema dinâmico de estado (`CAPRI // ...`) e card de telemetria com barra animada de atividade vocal. Os controles essenciais (**`MIC ON`/`MUTADA`**, **`⚙ CONFIG`** e minimizar para bandeja) ficam acessíveis diretamente no card e na barra inferior.
-- **💬 Barra de Pesquisa & Chat Funcional (`Conversar com Capri...`):** Digite comandos locais (ex: *"abrir spotify"*, *"que horas são"*) ou perguntas abertas para a IA diretamente pela interface — funcionando inclusive quando o microfone estiver silenciado.
-- **🎭 Motor Completo de Sprites Animados (`GerenciadorSpritesCapri`):**
-  - **Introdução animada** ao iniciar (`01-signal` até `07-ready`).
-  - **Sincronia labial (Lip-Sync)** em tempo real acompanhando a cadência da fala (`mouth_small`, `mouth_round`, `mouth_wide`).
-  - **Piscadas naturais e micro-expressões** enquanto em espera, além de reações contextuais (*pensando*, *ouvindo*, *dormindo*, *aceno* e *modo música* com notas flutuantes).
-  - **Interação de carinho (*Headpat*):** clicar na personagem exibe animação de carinho com efeito de coração.
-  - **Seletor de Poses & Modo Mascote:** escolha entre 8 poses padrão ou ative o recorte transparente direto na aba *Sistema*.
-- **🎙️ Reconhecimento de Voz 100% Offline (Vosk):** Transcrição local via **Vosk** (`vosk-model-small-pt-0.3`, baixado automaticamente na 1ª execução para `cache/`), com análise de múltiplas hipóteses, corretor fonético expandido em `dicionario_comandos.py` e fallback automático para reconhecimento online.
-- **🧠 Suporte Multi-IA & Prioridade `gemini-3.5-flash-lite`:** Alterne facilmente entre **Google Gemini** (com busca na web e fallback automático entre os modelos `3.5-flash-lite`, `3.5-flash`, `3.0-flash-lite`, `3.0-flash`, `2.5-flash`, `2.5-flash-lite`, `2.0-flash` e `flash-latest`), **Claude** e **DeepSeek**.
-- **🔊 Cache Permanente de Voz:** Todas as falas geradas via **Fish Audio** ou **Edge-TTS** ficam armazenadas permanentemente na pasta `cache/` por ID de voz, garantindo resposta imediata e economia de requisições.
-- **📦 Compilação Otimizada com Pasta `bin/`:** Executável `Capri.exe` empacotado em modo `--onedir` com dependências isoladas em `bin/`, mantendo o executável leve, rápido para abrir e dentro dos limites nativos do GitHub.
+Assistente virtual de desktop para Windows com estética **Cyberpunk**, arquitetura híbrida (reconhecimento de voz offline + APIs de IA em nuvem), modo desktop pet interativo, visão computacional, memória persistente em SQLite e agente autônomo para jogos.
 
 ---
 
-## 🛠️ Funcionalidades Principais
+## Download
 
-| Módulo | Recursos |
+Não é necessário instalar Python para usar a Capri no Windows:
+
+👉 **[Baixar a última versão pronta (`Capri.exe`)](https://github.com/Alfredinkapps/Capricorn/releases/latest)**
+
+1. Na seção **Assets** da última release, baixe o arquivo **`Capricorn-vX.X.X-Windows.zip`**.
+2. Extraia todo o conteúdo para uma pasta (mantenha `Capri.exe`, `assets/` e `bin/` juntos).
+3. Execute **`Capri.exe`**.
+4. Clique em **`⚙ CONFIG`** no HUD e adicione sua chave de API (**Gemini**, **Claude** ou **DeepSeek**). A pasta `data/` será criada automaticamente no primeiro uso.
+
+---
+
+## Principais Recursos
+
+* **HUD Cyberpunk & Modo Livre ("Fuga da Caixa"):**
+  * Interface compacta com sprites dinâmicos, sincronização labial e balão de fala acoplado.
+  * No **Modo Livre** (`🐾`), a Capri sai do HUD e circula pela barra de tarefas com física de gravidade, arraste pelo mouse, carinho (*headpat*), mini-chat flutuante e encaixe automático na borda superior das suas janelas ativas (permanecendo sempre no topo via Win32 sem roubar o foco).
+* **Memória Persistente (SQLite) & Acompanhamento Proativo:**
+  * Armazena o histórico de conversas em uma janela móvel de **20 dias** em `data/capri_memoria.db`.
+  * Identifica automaticamente eventos, provas, testes e prazos citados durante a conversa e puxa assunto proativamente dias depois para saber como foi.
+* **Agente Autônomo para *Reigns*:**
+  * Joga *Reigns* de forma autônoma lendo a tela a cada 3 segundos, inclinando a carta para espiar ambas as opções e os indicadores de impacto dos 4 pilares (Igreja, Povo, Exército e Tesouro).
+  * Possui travas de emergência instantâneas (**segurar `ESC`** ou mover o mouse para o canto superior esquerdo).
+  * Aprende entre runs: após cada morte, gera um *post-mortem* automático das últimas jogadas e salva lições táticas permanentes no SQLite para bater os próprios recordes.
+* **Visão Computacional & Co-piloto:**
+  * Analisa a tela sob demanda para depurar código, responder dúvidas visuais ou comentar o que está aberto.
+  * Modo Observador para acompanhar jogos em tempo real.
+* **Roteamento Multi-IA:**
+  * Suporte nativo a **Google Gemini** (priorizando `gemini-3.5-flash-lite` para respostas rápidas e `gemini-3.5-flash` para código, visão e *Reigns*), **Claude** e **DeepSeek**.
+* **Voz Híbrida & Controle do Windows:**
+  * Reconhecimento de voz offline com **Vosk** (baixo consumo de RAM) + fallback online e síntese de voz.
+  * Scanner automático de aplicativos instalados no Windows, controle de volume, mídia e Spotify.
+* **Logs em Arquivo:**
+  * Registro estruturado e rotativo em `data/capri.log`, facilitando diagnósticos mesmo ao executar o `Capri.exe` sem console.
+
+---
+
+## Comandos Rápidos (Voz ou Barra de Texto)
+
+| Categoria | Exemplos de Comando |
 | :--- | :--- |
-| **Controle do PC** | Abrir e fechar programas nativos, jogos e executáveis personalizados (`.exe`, `.lnk`, `.bat`) cadastrados por voz ou via interface. |
-| **Spotify & Mídia** | Tocar/trocar músicas diretamente no Spotify Desktop, pausar, retomar, avançar/voltar faixas e ajustar volume do sistema. |
-| **Energia & Sistema** | Bloquear tela, suspender, reiniciar, desligar (com cancelamento), consultar horas e iniciar automaticamente com o Windows. |
-| **Central de Configurações** | Painel temático com 3 abas (**Aplicativos**, **APIs & Voz**, **Sistema**), scanner automático do Menu Iniciar e registro rápido de novos `.exe`. |
-| **Bandeja do Sistema** | Execução discreta em segundo plano via ícone na bandeja do Windows (`pystray`). |
+| **Modo Livre** | `"sair da caixa"`, `"modo livre"`, `"voltar para a caixa"` |
+| **Agente *Reigns*** | `"jogue reigns"`, `"parar reigns"`, `"esquecer reigns"` *(ou segure `ESC`)* |
+| **Visão de Tela** | `"olha minha tela"`, `"corrige esse código"`, `"/tela o que há aqui?"` |
+| **Co-piloto** | `"ativar modo observador"`, `"desativar modo observador"` |
+| **Memória** | `"o que você lembra?"`, `"minhas memórias"` |
+| **Apps e Mídia** | `"abrir vscode"`, `"fechar chrome"`, `"toca [música]"`, `"pausar música"`, `"aumentar volume"` |
 
 ---
 
-## 📂 Estrutura do Projeto
+## Arquitetura do Projeto
 
 ```text
 Capricorn/
-├── Capri.exe                 # Executável principal (requer as pastas bin/ e assets/ ao lado)
-├── bin/                      # Bibliotecas e dependências compiladas (PyInstaller --contents-directory)
-├── assets/                   # Sprites animados (capri/, default/, fonts/) e ícones do HUD
-├── cache/                    # Criado automaticamente: modelo Vosk offline e cache permanente de falas (.mp3)
-├── capri_config.json         # Configurações locais, chaves de API e lista de aplicativos ativos
+├── assets/                   # Sprites, efeitos e recursos visuais
+├── bin/                      # Binários externos e modelo offline do Vosk
+├── data/                     # (Ignorada no Git) capri_config.json, capri_memoria.db, capri.log, cache/
 ├── src/
-│   ├── capri_core.py         # Núcleo principal (loop de voz + fila da barra de pesquisa)
-│   ├── hud.py                # Interface Cyberpunk, motor de sprites, bandeja e configurações
-│   ├── voz.py                # Captura de áudio, Vosk offline, Fish Audio / Edge-TTS e Lip-Sync
-│   ├── cerebro_ia.py         # Integração Gemini / Claude / DeepSeek e roteamento de comandos
-│   ├── dicionario_comandos.py# Gatilhos de voz, intenções e corretor fonético para Vosk
-│   ├── sistema_pc.py         # Execução instantânea de comandos locais do Windows
-│   ├── abrir_apps.py         # Gerenciamento e execução de aplicativos mapeados
-│   └── spotify_control.py    # Automação de reprodução no Spotify Desktop
+│   ├── main.py               # Ponto de entrada principal
+│   ├── core/
+│   │   ├── config.py         # Caminhos, leitura/escrita de JSON e inicialização no Windows
+│   │   ├── engine.py         # Orquestração de threads, locks e loops principais
+│   │   └── logger.py         # Logs rotativos em arquivo e captura global de exceções
+│   ├── ui/
+│   │   ├── hud.py            # Interface principal, balão de fala e configurações
+│   │   └── modo_livre.py     # Física do desktop pet e ancoragem em janelas via Win32
+│   ├── ai/
+│   │   ├── cerebro.py        # Roteamento Multi-IA e interpretador de comandos
+│   │   ├── visao.py          # Captura de tela sob demanda e Modo Observador
+│   │   └── memoria.py        # Banco SQLite (20 dias, eventos proativos e lições do Reigns)
+│   ├── agents/
+│   │   └── reigns.py         # Agente visual autônomo de Reigns
+│   ├── audio/
+│   │   ├── voz.py            # STT (Vosk / Google) e TTS
+│   │   └── comandos.py       # Normalização de frases e wake-words
+│   └── system/
+│       ├── apps.py           # Scanner e gerenciamento de aplicativos do Windows
+│       └── spotify.py        # Controle de reprodução do Spotify
+├── capri_config.example.json # Modelo de configuração sem chaves de API
+├── Capri.spec                # Receita reproduzível de build do PyInstaller
+├── pyrightconfig.json        # Configuração de paths do Pylance/Pyright
+├── requirements.txt          # Dependências Python do projeto
 └── README.md
 ```
 
 ---
 
-## 🚀 Como Usar
+## Rodando pelo Código-Fonte (Desenvolvedores)
 
-### Opção 1: Executar diretamente pelo `Capri.exe` (Recomendado)
-1. Clone ou baixe o repositório mantendo juntos na mesma pasta o **`Capri.exe`**, a pasta **`bin/`** e a pasta **`assets/`**.
-2. Dê um duplo clique em **`Capri.exe`**.
-3. Na primeira execução:
-   - A Capri baixará automaticamente o modelo offline em português do Vosk (~31 MB) para a pasta `cache/`.
-   - A **Central de Configurações** abrirá automaticamente caso nenhuma chave de API esteja configurada. Insira sua chave (**Gemini**, **Claude** ou **DeepSeek**) e, opcionalmente, suas credenciais do **Fish Audio** na aba **APIs & Voz**.
-4. Pronto! Chame **"Capri"** no microfone ou digite qualquer comando/pergunta na barra **"Conversar com Capri..."**.
+### Pré-requisitos
+* **Windows 10/11**
+* **Python 3.10+**
+* Modelo offline do Vosk posicionado em `bin/` (caso use STT offline)
 
-### Opção 2: Rodar a partir do código-fonte (Python)
-1. Crie e ative um ambiente virtual:
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
-   ```
-2. Instale as dependências necessárias:
-   ```powershell
-   pip install google-genai vosk sounddevice numpy pygame edge-tts SpeechRecognition requests pillow pystray pyinstaller
-   ```
-3. Inicie a assistente:
-   ```powershell
-   python src/capri_core.py
-   ```
-
----
-
-## ⚙️ Compilando uma Nova Build (`Capri.exe` + `bin/`)
-
-Caso faça alterações no código-fonte e queira atualizar o executável mantendo o tamanho reduzido para o GitHub:
+### Instalação e Execução
 
 ```powershell
-taskkill /F /IM Capri.exe /T 2>$null
-Remove-Item -Recurse -Force build, dist, bin -ErrorAction SilentlyContinue
-Remove-Item -Force Capri.exe, Capri.spec -ErrorAction SilentlyContinue
+# 1. Clone o repositório
+git clone [https://github.com/Alfredinkapps/Capricorn.git](https://github.com/Alfredinkapps/Capricorn.git)
+cd Capricorn
 
-$icone = if (Test-Path "assets\default\app.ico") { "assets/default/app.ico" } else { "assets/icone.ico" }
-pyinstaller --noconfirm --onedir --noconsole --clean --name "Capri" --contents-directory "bin" --icon="$icone" --paths "src" --collect-all vosk --distpath "dist" src/capri_core.py
+# 2. Crie e ative o ambiente virtual
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
-Move-Item -Path "dist\Capri\Capri.exe" -Destination "." -Force
-Move-Item -Path "dist\Capri\bin" -Destination "." -Force
-Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
+# 3. Instale as dependências
+pip install -r requirements.txt
+
+# 4. Inicie a Capri
+python src/main.py
 ```
 
-> **Nota:** Mantenha sempre `Capri.exe`, `bin/` e `assets/` no mesmo diretório ao mover ou distribuir a aplicação.
+Na primeira execução, configure suas chaves em **`⚙ CONFIG`** (ou copie `capri_config.example.json` para `data/capri_config.json` e preencha manualmente).
 
 ---
 
-## 🧠 Desempenho & Uso de Memória
+## Compilando o Executável (`Capri.exe`)
 
-- **Uso basal:** ~120 MB a 280 MB de RAM em espera com sprites cacheados e modelo compacto do Vosk.
-- **Teto elástico:** liberado para utilizar até ~1 GB de RAM sob demanda caso modelos maiores de transcrição local sejam ativados em `src/voz.py`, com coleta de lixo automática (`gc.collect()`).
+Com a `.venv` ativa e o `pyinstaller` instalado:
+
+```powershell
+pyinstaller --clean Capri.spec
+```
+
+O executável será gerado em `dist/Capri.exe`. Para distribuir ou rodar de forma portátil, mantenha `Capri.exe`, `assets/` e `bin/` no mesmo diretório — **não** inclua a pasta `data/` ao empacotar versões públicas.
 
 ---
 
-## 📄 Notas de Privacidade
+## Privacidade e Dados Locais
 
-- O arquivo `capri_config.json` armazena suas chaves de API localmente. Certifique-se de mantê-lo no `.gitignore` antes de publicar atualizações em repositórios públicos.
+Todas as credenciais (`data/capri_config.json`), memórias conversacionais (`data/capri_memoria.db`), caches de áudio (`data/cache/`) e registros de execução (`data/capri.log`) ficam isolados localmente na pasta `data/`, que permanece bloqueada no `.gitignore`.

@@ -1,36 +1,16 @@
-# 1. Segurança: Suas chaves de API (Gemini e Fish Audio) e configurações locais
-capri_config.json
-
-# 2. Cache de voz e áudios gerados
-cache/
-*.mp3
-*.wav
-
-# 3. Ambiente Virtual do Python
+# Ambiente e cache Python
 .venv/
-venv/
-env/
-
-# 4. Cache interno do Python
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
+tempCodeRunnerFile.py
 
-# 5. Rascunhos de compilação do PyInstaller
+# Dados locais, memórias e chaves de API
+capri_config.json
+capri_memoria.db
+cache/
+data/
+
+# Build PyInstaller (mantém o Capri.spec versionado)
 build/
 dist/
-*.spec
-
-# 6. Arquivos temporários do VS Code / Code Runner e da conversão de ícone
-tempCodeRunnerFile.py
-.vscode/
-
-# 7. Backups locais e arquivos de sistema do Windows
-*_backup.py
-*.bak
-Thumbs.db
-Desktop.ini
-
-!bin/
-!bin/**/
-!bin/**
+*.exe

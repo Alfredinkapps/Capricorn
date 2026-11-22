@@ -16,14 +16,18 @@ import edge_tts
 import speech_recognition as sr
 from collections import deque
 
-from hud import PASTA_PROJETO, CapriHUD
-from dicionario_comandos import extrair_comando_apos_nome, normalizar_frase
+from core.config import PASTA_PROJETO
+from ui.hud import CapriHUD
+from audio.comandos import extrair_comando_apos_nome, normalizar_frase
+from core.logger import obter_logger
+log = obter_logger("voz")  # ou "cerebro", "memoria", "modo_livre", "voz"
 
 try:
-    from vosk import Model, KaldiRecognizer, SetLogLevel
-    SetLogLevel(-1)
+    from vosk import Model, KaldiRecognizer
     VOSK_DISPONIVEL = True
 except ImportError:
+    Model = None
+    KaldiRecognizer = None
     VOSK_DISPONIVEL = False
 
 PREFERIR_STT_OFFLINE = True
@@ -76,19 +80,20 @@ def obter_modelo_vosk():
             return None
 
     try:
-        _MODELO_VOSK_MEMORIA = Model(pasta_modelo)
-        return _MODELO_VOSK_MEMORIA
-    except Exception as e:
-        print(f"  [Erro ao carregar modelo Vosk]: {e}")
-        return None
-
+        from vosk import Model, KaldiRecognizer
+    except ImportError:
+        Model = None
+        KaldiRecognizer = None
 
 def transcrever_offline_vosk(bytes_audio: bytes, taxa_amostragem: int = 16000) -> str:
     """Transcreve o áudio localmente de forma estável em thread única testando 3 hipóteses."""
     modelo_v = obter_modelo_vosk()
     if modelo_v is None:
         return ""
-
+    
+    if not VOSK_DISPONIVEL or KaldiRecognizer is None:
+        return ""
+    
     try:
         rec = KaldiRecognizer(modelo_v, taxa_amostragem)
         rec.SetMaxAlternatives(3)
@@ -163,18 +168,33 @@ def _obter_caminho_audio_permanente(hud: CapriHUD, texto_limpo: str) -> str:
     hash_texto = hashlib.md5(texto_limpo.lower().encode("utf-8")).hexdigest()[:10]
     return os.path.join(pasta_destino, f"{prefixo}_{hash_texto}.mp3")
 
-
 def falar(hud: CapriHUD, texto: str, usar_cache: bool = True):
-    """Salva o áudio permanentemente em cache/ e reproduz direto do arquivo para máxima estabilidade."""
-    texto_limpo = re.sub(r"\s+", " ", texto).strip()
-    print(f"\nCAPRI: {texto_limpo}\n")
-    hud.atualizar_estado("FALANDO...", "#FF0055", f"CAPRI: {texto_limpo}")
+    """Exibe a resposta formatada no Balão de Fala e reproduz a versão limpa por voz."""
+    texto_exibicao = (texto or "").strip()
+    if not texto_exibicao:
+        return
+
+    print(f"\nCAPRI:\n{texto_exibicao}\n")
+
+    # Abre o Balão de Fala com o texto/código completo e formatado
+    if hasattr(hud, "mostrar_balao_fala"):
+        hud.mostrar_balao_fala(texto_exibicao)
+
+    # Prepara o texto para o áudio (substitui blocos de código gigantes por um aviso curto)
+    tem_codigo = "```" in texto_exibicao
+    texto_sem_codigo = re.sub(r"```.*?```", " Enviei o código no balão de fala. ", texto_exibicao, flags=re.DOTALL)
+    texto_fala = re.sub(r"[*_`#]+", "", texto_sem_codigo)
+    texto_fala = re.sub(r"\s+", " ", texto_fala).strip()
+    if not texto_fala and tem_codigo:
+        texto_fala = "Enviei o código pronto no balão de fala."
+
+    hud.atualizar_estado("FALANDO...", "#FF0055", f"CAPRI: {texto_fala}")
 
     if getattr(hud, "voz_mutada", False):
         time.sleep(1.0)
         return
 
-    arquivo_audio = _obter_caminho_audio_permanente(hud, texto_limpo)
+    arquivo_audio = _obter_caminho_audio_permanente(hud, texto_fala)
 
     try:
         try:
@@ -184,8 +204,8 @@ def falar(hud: CapriHUD, texto: str, usar_cache: bool = True):
 
         tem_cache_disco = os.path.exists(arquivo_audio) and os.path.getsize(arquivo_audio) > 500
         if not tem_cache_disco:
-            if not gerar_voz_fish_audio(hud, texto_limpo, arquivo_audio):
-                asyncio.run(_gerar_audio_nativo(texto_limpo, arquivo_audio))
+            if not gerar_voz_fish_audio(hud, texto_fala, arquivo_audio):
+                asyncio.run(_gerar_audio_nativo(texto_fala, arquivo_audio))
 
         pygame.mixer.music.load(arquivo_audio)
         pygame.mixer.music.play()
@@ -210,8 +230,7 @@ def falar(hud: CapriHUD, texto: str, usar_cache: bool = True):
     except Exception as e:
         hud.nivel_voz = 0.0
         print(f"[Erro na reprodução de voz]: {e}")
-
-
+        
 def ouvir_microfone_com_hud(hud: CapriHUD, reconhecedor: sr.Recognizer, aguardando_comando: bool = False) -> str:
     if VOSK_DISPONIVEL and _MODELO_VOSK_MEMORIA is None:
         obter_modelo_vosk()
@@ -299,7 +318,7 @@ def ouvir_microfone_com_hud(hud: CapriHUD, reconhecedor: sr.Recognizer, aguardan
 
         try:
             audio_data = sr.AudioData(bytes_pcm, taxa_amostragem, 2)
-            texto_bruto = reconhecedor.recognize_google(audio_data, language="pt-BR")
+            texto_bruto = reconhecedor.recognize_google(audio_data, language="pt-BR")  # type: ignore
             return normalizar_frase(texto_bruto)
         except Exception:
             if VOSK_DISPONIVEL:

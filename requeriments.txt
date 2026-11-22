@@ -1,0 +1,11 @@
+google-genai
+pygame-ce
+SpeechRecognition
+vosk
+mss
+Pillow
+pystray
+pyautogui
+requests
+edge-tts
+numpy

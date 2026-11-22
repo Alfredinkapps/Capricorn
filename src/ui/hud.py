@@ -14,199 +14,21 @@ from tkinter import filedialog
 import pygame
 import pystray
 from PIL import Image, ImageDraw, ImageTk, ImageOps
-
-# =====================================================================
-# 1. CAMINHOS, INICIALIZAÇÃO E CONFIGURAÇÕES GERAIS
-# =====================================================================
-if getattr(sys, "frozen", False):
-    PASTA_PROJETO = os.path.dirname(sys.executable)
-else:
-    PASTA_ATUAL = os.path.dirname(os.path.abspath(__file__))
-    PASTA_PROJETO = os.path.dirname(PASTA_ATUAL) if os.path.basename(PASTA_ATUAL).lower() == "src" else PASTA_ATUAL
-
-ARQUIVO_CONFIG = os.path.join(PASTA_PROJETO, "capri_config.json")
+from core.config import (
+    PASTA_PROJETO,
+    PASTA_DATA,
+    PASTA_CACHE,
+    ARQUIVO_CONFIG,
+    configurar_inicializacao_windows,
+    carregar_configuracoes,
+    salvar_configuracoes,
+)
+from system.apps import escanear_e_atualizar_apps
 
 try:
     pygame.mixer.init()
 except Exception as e:
     print(f"[Aviso Mixer Pygame]: {e}")
-
-
-def configurar_inicializacao_windows(ativar: bool = True):
-    """Registra ou remove a Capri da inicialização automática do Windows."""
-    chave_reg = r"Software\Microsoft\Windows\CurrentVersion\Run"
-    nome_app = "CapriAssistant"
-    try:
-        if getattr(sys, "frozen", False):
-            caminho_exec = f'"{sys.executable}"'
-        else:
-            script_principal = os.path.join(PASTA_PROJETO, "src", "capri_core.py")
-            if not os.path.exists(script_principal):
-                script_principal = os.path.join(PASTA_PROJETO, "capri_core.py")
-            caminho_exec = f'"{sys.executable}" "{script_principal}"'
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, chave_reg, 0, winreg.KEY_ALL_ACCESS) as key:
-            if ativar:
-                winreg.SetValueEx(key, nome_app, 0, winreg.REG_SZ, caminho_exec)
-            else:
-                try:
-                    winreg.DeleteValue(key, nome_app)
-                except FileNotFoundError:
-                    pass
-    except Exception as e:
-        print(f"[Aviso Registro Windows]: {e}")
-
-
-def carregar_configuracoes() -> dict:
-    padrao = {
-        "provedor_ia": "Gemini",
-        "gemini_api_key": "",
-        "claude_api_key": "",
-        "deepseek_api_key": "",
-        "fish_api_key": "",
-        "fish_voice_id": "",
-        "iniciar_com_windows": True,
-        "pose_padrao": "Padrao",
-        "modo_recorte_transparente": False,
-        "stt_offline": True,
-        "voz_ativa": True,
-        "apps": {}
-    }
-    if not os.path.exists(ARQUIVO_CONFIG):
-        return padrao
-    try:
-        with open(ARQUIVO_CONFIG, "r", encoding="utf-8") as f:
-            dados = json.load(f)
-        for k, v in padrao.items():
-            if k not in dados:
-                dados[k] = v
-        return dados
-    except Exception:
-        return padrao
-
-
-def salvar_configuracoes(config: dict):
-    try:
-        with open(ARQUIVO_CONFIG, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"[Erro ao salvar capri_config.json]: {e}")
-
-
-# =====================================================================
-# 2. SCANNER INTELIGENTE DE APLICATIVOS PADRÕES (LISTA COMPLETA)
-# =====================================================================
-APPS_PADROES_PERMITIDOS = {
-    "firefox": ("Firefox", "firefox.exe", ["firefox", "mozilla", "navegador"]),
-    "google chrome": ("Google Chrome", "chrome.exe", ["chrome", "google chrome"]),
-    "microsoft edge": ("Microsoft Edge", "msedge.exe", ["edge", "microsoft edge"]),
-    "brave": ("Brave", "brave.exe", ["brave"]),
-    "opera": ("Opera", "opera.exe", ["opera"]),
-    "opera gx": ("Opera GX", "opera.exe", ["opera gx"]),
-    "discord": ("Discord", "Discord.exe", ["discord", "disc"]),
-    "telegram": ("Telegram", "Telegram.exe", ["telegram"]),
-    "whatsapp": ("WhatsApp", "WhatsApp.exe", ["whatsapp", "zap"]),
-    "steam": ("Steam", "steam.exe", ["steam"]),
-    "epic games launcher": ("Epic Games", "EpicGamesLauncher.exe", ["epic", "epic games"]),
-    "riot client": ("Riot Client", "RiotClientServices.exe", ["riot", "riot client"]),
-    "valorant": ("VALORANT", "VALORANT-Win64-Shipping.exe", ["valorant", "vava"]),
-    "battle.net": ("Battle.net", "Battle.net.exe", ["battlenet", "battle net"]),
-    "ea": ("EA App", "EADesktop.exe", ["ea app", "origin"]),
-    "ubisoft connect": ("Ubisoft Connect", "UbisoftConnect.exe", ["ubisoft", "uplay"]),
-    "xbox": ("Xbox", "XboxPcApp.exe", ["xbox"]),
-    "roblox player": ("Roblox", "RobloxPlayerBeta.exe", ["roblox"]),
-    "minecraft launcher": ("Minecraft", "MinecraftLauncher.exe", ["minecraft", "mine"]),
-    "spotify": ("Spotify", "Spotify.exe", ["spotify"]),
-    "obs studio": ("OBS Studio", "obs64.exe", ["obs", "obs studio", "gravador"]),
-    "vlc media player": ("VLC Media Player", "vlc.exe", ["vlc"]),
-    "audacity": ("Audacity", "audacity.exe", ["audacity"]),
-    "capcut": ("CapCut", "CapCut.exe", ["capcut"]),
-    "canva": ("Canva", "Canva.exe", ["canva"]),
-    "blender": ("Blender", "blender.exe", ["blender"]),
-    "gimp": ("GIMP", "gimp.exe", ["gimp"]),
-    "visual studio code": ("Visual Studio Code", "Code.exe", ["vscode", "vs code", "visual studio code"]),
-    "git bash": ("Git Bash", "git-bash.exe", ["git bash"]),
-    "postman": ("Postman", "Postman.exe", ["postman"]),
-    "docker desktop": ("Docker Desktop", "Docker Desktop.exe", ["docker"]),
-    "android studio": ("Android Studio", "studio64.exe", ["android studio"]),
-    "pycharm": ("PyCharm", "pycharm64.exe", ["pycharm"]),
-    "cursor": ("Cursor", "Cursor.exe", ["cursor"]),
-    "notion": ("Notion", "Notion.exe", ["notion"]),
-    "obsidian": ("Obsidian", "Obsidian.exe", ["obsidian"]),
-    "word": ("Microsoft Word", "WINWORD.EXE", ["word"]),
-    "excel": ("Microsoft Excel", "EXCEL.EXE", ["excel"]),
-    "powerpoint": ("PowerPoint", "POWERPNT.EXE", ["powerpoint", "power point"]),
-    "winrar": ("WinRAR", "WinRAR.exe", ["winrar"]),
-    "7-zip file manager": ("7-Zip", "7zFM.exe", ["7zip", "7-zip"]),
-    "qbittorrent": ("qBittorrent", "qbittorrent.exe", ["qbittorrent", "torrent"])
-}
-
-UTILITARIOS_NATIVOS_WINDOWS = {
-    "notepad": {"nome": "Notepad", "caminho_abrir": "notepad.exe", "executavel": "notepad.exe", "apelidos": ["notepad", "bloco de notas", "notas"]},
-    "cmd": {"nome": "Prompt de Comando (CMD)", "caminho_abrir": "cmd.exe", "executavel": "cmd.exe", "apelidos": ["cmd", "prompt de comando", "terminal"]},
-    "calculadora": {"nome": "Calculadora", "caminho_abrir": "calc.exe", "executavel": "CalculatorApp.exe", "apelidos": ["calculadora", "calc"]},
-    "explorer": {"nome": "Explorador de Arquivos", "caminho_abrir": "explorer.exe", "executavel": "explorer.exe", "apelidos": ["explorador de arquivos", "arquivos", "pastas"]},
-    "mspaint": {"nome": "Paint", "caminho_abrir": "mspaint.exe", "executavel": "mspaint.exe", "apelidos": ["paint", "mspaint"]},
-    "taskmgr": {"nome": "Gerenciador de Tarefas", "caminho_abrir": "taskmgr.exe", "executavel": "Taskmgr.exe", "apelidos": ["gerenciador de tarefas", "taskmgr"]}
-}
-
-TERMOS_BLOQUEADOS_ATALHO = (
-    "uninstall", "desinstalar", "setup", "installer", "ajuda", "help", "readme",
-    "documentation", "website", "command prompt", "privativa", "private", "odbc",
-    "narrator", "on-screen", "performance monitor", "última versão", "ultima versao",
-    "32-bit", "64-bit", "updater", "update", "diagnostic", "manual", "license",
-    "release notes", "safe mode", "modo de segurança", "server", "reparar", "repair"
-)
-
-
-def escanear_e_atualizar_apps(config: dict) -> dict:
-    apps_antigos = config.get("apps", {})
-    novos_apps = {}
-    for chave, dados in apps_antigos.items():
-        if dados.get("personalizado", False):
-            novos_apps[chave] = dados
-    for chave_nat, dados_nat in UTILITARIOS_NATIVOS_WINDOWS.items():
-        ja_ativo = apps_antigos.get(chave_nat, {}).get("ativo", True)
-        novos_apps[chave_nat] = {
-            "nome": dados_nat["nome"],
-            "caminho_abrir": dados_nat["caminho_abrir"],
-            "executavel": dados_nat["executavel"],
-            "ativo": ja_ativo,
-            "personalizado": False,
-            "apelidos": dados_nat["apelidos"]
-        }
-    pastas_menu = [
-        os.path.join(os.environ.get("APPDATA", ""), r"Microsoft\Windows\Start Menu\Programs"),
-        os.path.join(os.environ.get("PROGRAMDATA", ""), r"Microsoft\Windows\Start Menu\Programs")
-    ]
-    for pasta_base in pastas_menu:
-        if not os.path.exists(pasta_base):
-            continue
-        for raiz, _, arquivos in os.walk(pasta_base):
-            for arq in arquivos:
-                if not arq.lower().endswith((".lnk", ".url")):
-                    continue
-                nome_atalho = os.path.splitext(arq)[0].strip()
-                chave_atalho = nome_atalho.lower()
-                if any(bloq in chave_atalho for bloq in TERMOS_BLOQUEADOS_ATALHO):
-                    continue
-                for padrao_chave, (nome_bonito, exe_padrao, apelidos_padrao) in APPS_PADROES_PERMITIDOS.items():
-                    if chave_atalho == padrao_chave or chave_atalho.startswith(padrao_chave + " "):
-                        if padrao_chave not in novos_apps:
-                            ativo_ant = apps_antigos.get(padrao_chave, apps_antigos.get(chave_atalho, {})).get("ativo", True)
-                            novos_apps[padrao_chave] = {
-                                "nome": nome_bonito,
-                                "caminho_abrir": os.path.join(raiz, arq),
-                                "executavel": exe_padrao,
-                                "ativo": ativo_ant,
-                                "personalizado": False,
-                                "apelidos": apelidos_padrao
-                            }
-                        break
-    config["apps"] = novos_apps
-    salvar_configuracoes(config)
-    return config
-
-
 # =====================================================================
 # 3. MOTOR DE SPRITES DINÂMICOS DA CAPRI (CACHE EM RAM + ANIMAÇÕES)
 # =====================================================================
@@ -322,7 +144,7 @@ class GerenciadorSpritesCapri:
 
 
 # =====================================================================
-# 4. INTERFACE GRÁFICA PRINCIPAL (SEM BOTÕES NO TOPO + CONTROLES ACESSÍVEIS)
+# 4. INTERFACE GRÁFICA PRINCIPAL + BALÃO DE FALA CYBERPUNK
 # =====================================================================
 class CapriHUD:
     BG_OUTER = "#11090E"
@@ -348,6 +170,14 @@ class CapriHUD:
         self.forcar_escuta_voz = False
         self.voz_mutada = not self.config.get("voz_ativa", True)
         self.painel_status_visivel = True
+        self.anexar_tela = False
+        self.modo_livre = None
+
+        # Controle do Balão de Fala lateral
+        self.balao_fala = None
+        self.balao_aberto = False
+        self.ultima_fala_capri = ""
+        self.ultimo_codigo_extraido = ""
 
         self.fila_comandos_texto = queue.Queue()
 
@@ -356,7 +186,7 @@ class CapriHUD:
         self.pos_barra_progresso = 0.0
         self.estado_atual = "A LIGAR"
         self.subtitulo_card = "Iniciando núcleo local..."
-        self.legenda_card = "Ainda preparando. Digite abaixo ou chame 'Capri' por voz."
+        self.legenda_card = "Diga 'Capri' ou digite abaixo..."
         self.cor_atual = self.BORDER_PINK
         self.janela_config = None
         self.icone_bandeja = None
@@ -381,7 +211,6 @@ class CapriHUD:
         self.sprites = GerenciadorSpritesCapri(self._obter_pasta_assets(), tamanho_alvo=(240, 195))
         self._aplicar_icone_janela(self.root)
 
-        # Altura compacta sem a área de botões do topo
         self.root.geometry("465x475+40+40")
         self.root.configure(bg=self.BG_OUTER)
         self.root.overrideredirect(True)
@@ -392,8 +221,10 @@ class CapriHUD:
         self.main_frame = tk.Frame(self.root, bg=self.BG_OUTER, padx=10, pady=8)
         self.main_frame.pack(fill="both", expand=True)
 
-        self._construir_visor_central()
+        # IMPORTANTE: Barra de pesquisa é empacotada PRIMEIRO com side="bottom"
+        # para NUNCA sumir independentemente do conteúdo do card central
         self._construir_barra_pesquisa()
+        self._construir_visor_central()
 
         self._aplicar_modo_transparencia()
         self._iniciar_bandeja_sistema()
@@ -433,20 +264,20 @@ class CapriHUD:
 
     def _construir_visor_central(self):
         self.container_central = tk.Frame(self.main_frame, bg=self.BG_OUTER)
-        self.container_central.pack(fill="both", expand=True, pady=(0, 8))
+        self.container_central.pack(side="top", fill="both", expand=True, pady=(0, 8))
 
-        # Visor CRT dos Sprites (Inicia direto no topo da janela)
+        # Visor CRT dos Sprites
         self.canvas_sprite = tk.Canvas(
-            self.container_central, width=445, height=255,
+            self.container_central, width=445, height=245,
             bg=self.BG_SCREEN, highlightthickness=0, cursor="hand2"
         )
         self.canvas_sprite.pack(fill="both", expand=True)
         self.canvas_sprite.bind("<Button-1>", self._ao_clicar_sprite)
         self.canvas_sprite.bind("<B1-Motion>", self._arrastar_janela)
 
-        # Card Central ("CAPRI pre-alpha" + Botões Acessíveis de Mute, Config e Minimizar)
+        # Card Central compacto ("CAPRI pre-alpha" + Botões)
         self.borda_card_status = tk.Frame(self.container_central, bg=self.BORDER_PINK, padx=1, pady=1)
-        self.borda_card_status.pack(fill="x")
+        self.borda_card_status.pack(fill="x", side="bottom")
 
         self.card_status = tk.Frame(self.borda_card_status, bg=self.BG_CARD, padx=14, pady=10)
         self.card_status.pack(fill="x")
@@ -474,7 +305,6 @@ class CapriHUD:
         lbl_ver.bind("<ButtonPress-1>", self._iniciar_arraste)
         lbl_ver.bind("<B1-Motion>", self._arrastar_janela)
 
-        # Botões de acesso rápido direto no cabeçalho do Card Central
         f_controles_card = tk.Frame(f_titulo_card, bg=self.BG_CARD)
         f_controles_card.pack(side="right")
 
@@ -486,13 +316,29 @@ class CapriHUD:
         )
         self.btn_fechar.pack(side="right", padx=(4, 0))
 
+        self.btn_balao_toggle = tk.Button(
+            f_controles_card, text="💬", fg=self.ACCENT_VIOLET, bg="#28131E",
+            activebackground="#381A2A", activeforeground="#FFFFFF",
+            font=("Consolas", 9, "bold"), relief="flat", bd=0, cursor="hand2",
+            command=self.alternar_balao_fala, padx=6, pady=1
+        )
+        self.btn_balao_toggle.pack(side="right", padx=3)
+
+        self.btn_modo_livre = tk.Button(
+            f_controles_card, text="🐾", fg=self.ACCENT_LIME, bg="#28131E",
+            activebackground="#381A2A", activeforeground="#FFFFFF",
+            font=("Consolas", 9, "bold"), relief="flat", bd=0, cursor="hand2",
+            command=self.ativar_modo_livre, padx=6, pady=1
+        )
+        self.btn_modo_livre.pack(side="right", padx=3)
+
         self.btn_config = tk.Button(
             f_controles_card, text="⚙ CONFIG", fg=self.ACCENT_CYAN, bg="#28131E",
             activebackground="#381A2A", activeforeground="#FFFFFF",
             font=("Consolas", 8, "bold"), relief="flat", bd=0, cursor="hand2",
             command=self.abrir_configuracoes, padx=8, pady=2
         )
-        self.btn_config.pack(side="right", padx=4)
+        self.btn_config.pack(side="right", padx=3)
 
         self.btn_pausa = tk.Button(
             f_controles_card, text="MIC ON", fg="#090D16", bg="#00FF66",
@@ -500,28 +346,30 @@ class CapriHUD:
             font=("Consolas", 8, "bold"), relief="flat", bd=0, cursor="hand2",
             command=self.alternar_pausa, padx=8, pady=2
         )
-        self.btn_pausa.pack(side="right", padx=4)
+        self.btn_pausa.pack(side="right", padx=3)
 
         self.lbl_subtitulo_card = tk.Label(
             self.card_status, text=self.subtitulo_card,
             fg=self.TEXT_WHITE, bg=self.BG_CARD, font=("Consolas", 10), anchor="w"
         )
-        self.lbl_subtitulo_card.pack(fill="x", pady=(0, 8))
+        self.lbl_subtitulo_card.pack(fill="x", pady=(0, 6))
 
         self.canvas_progresso = tk.Canvas(
             self.card_status, height=4, bg="#38242E", highlightthickness=0
         )
-        self.canvas_progresso.pack(fill="x", pady=(0, 10))
+        self.canvas_progresso.pack(fill="x", pady=(0, 8))
 
+        # Legenda sempre de 1 linha curta (respostas completas vão para o Balão de Fala)
         self.lbl_legenda_card = tk.Label(
             self.card_status, text=self.legenda_card,
             fg=self.TEXT_GRAY, bg=self.BG_CARD, font=("Consolas", 9),
-            anchor="w", justify="left", wraplength=415
+            anchor="w", justify="left", cursor="hand2"
         )
         self.lbl_legenda_card.pack(fill="x")
+        self.lbl_legenda_card.bind("<Button-1>", lambda e: self.alternar_balao_fala())
 
     def _construir_barra_pesquisa(self):
-        """Barra inferior 'Conversar com Capri...' limpa com botões de Mutar, Configurações e Enviar."""
+        """Barra inferior 'Conversar com Capri...' travada na base da janela."""
         self.borda_pesquisa = tk.Frame(self.main_frame, bg=self.BORDER_PINK, padx=1, pady=1)
         self.borda_pesquisa.pack(fill="x", side="bottom", pady=(2, 0))
 
@@ -553,10 +401,17 @@ class CapriHUD:
         self.entry_pesquisa.bind("<FocusIn>", self._ao_ganhar_foco_pesquisa)
         self.entry_pesquisa.bind("<FocusOut>", self._ao_perder_foco_pesquisa)
         self.entry_pesquisa.bind("<Return>", self._submeter_pesquisa_interface)
+        self.entry_pesquisa.bind("<KP_Enter>", self._submeter_pesquisa_interface)
 
-        # Botões acessíveis na barra inferior: [🎙 Mutar] [⚙ Config] [↗ Enviar]
+        # Botões acessíveis na barra inferior: [👁 Tela] [🎙 Mutar] [⚙ Config] [↗ Enviar]
         f_acoes_barra = tk.Frame(self.barra_pesquisa_inner, bg=self.BG_BAR)
         f_acoes_barra.pack(side="right")
+
+        self.btn_visao_barra = self._criar_botao_quadrado(
+            f_acoes_barra, "👁", self._alternar_anexar_tela,
+            cor_borda=self.BORDER_DIM, cor_texto=self.TEXT_GRAY, largura=28, altura=25
+        )
+        self.btn_visao_barra.pack(side="left", padx=2)
 
         self.btn_mic_barra = self._criar_botao_quadrado(
             f_acoes_barra, "🎙", self.alternar_pausa,
@@ -576,42 +431,308 @@ class CapriHUD:
         ).pack(side="left", padx=(2, 0))
 
     # =====================================================================
-    # FUNÇÕES DA BARRA DE PESQUISA E CONTROLES
+    # BALÃO DE FALA CYBERPUNK LATERAL (TEXTO LONGO & CÓDIGO COPIÁVEL)
     # =====================================================================
+    def _extrair_blocos_codigo(self, texto: str) -> str:
+        """Extrai o conteúdo de blocos ```codigo``` se existirem na resposta."""
+        blocos = re.findall(r"```(?:[a-zA-Z0-9_+-]*)\n?(.*?)```", texto, flags=re.DOTALL)
+        if blocos:
+            return "\n\n".join(b.strip() for b in blocos if b.strip())
+        return ""
+
+    def _reposicionar_balao(self):
+     """Mantém o balão ancorado ao lado do HUD ou da Capri solta no Modo Livre."""
+     try:
+         if not (self.balao_fala and self.balao_fala.winfo_exists() and self.balao_aberto):
+             return
+
+         tela_w = self.root.winfo_screenwidth()
+         tela_h = self.root.winfo_screenheight()
+
+         # Decide se ancora na Capri solta ou na janela fixa do HUD
+         if self.modo_livre and self.modo_livre.ativo and self.modo_livre.win and self.modo_livre.win.winfo_exists():
+             ref_x = int(self.modo_livre.x)
+             ref_y = int(self.modo_livre.y)
+             ref_w = self.modo_livre.largura
+             ref_h = self.modo_livre.altura
+         else:
+             self.root.update_idletasks()
+             ref_x = self.root.winfo_x()
+             ref_y = self.root.winfo_y()
+             ref_w = self.root.winfo_width()
+             ref_h = self.root.winfo_height()
+
+         balao_w = 430
+         balao_h = self.balao_fala.winfo_height()
+         if balao_h < 100:
+             balao_h = 260
+
+         # Prefere direita; se faltar espaço, vira para a esquerda
+         if ref_x + ref_w + 12 + balao_w <= tela_w:
+             bx = ref_x + ref_w + 12
+         else:
+             bx = max(10, ref_x - balao_w - 12)
+
+         # Evita cortar para baixo da barra de tarefas quando ela está andando lá embaixo
+         by = ref_y + 12
+         if by + balao_h > tela_h - 56:
+             by = max(10, (ref_y + ref_h) - balao_h)
+
+         self.balao_fala.geometry(f"{balao_w}x{balao_h}+{bx}+{by}")
+     except Exception:
+         pass
+     
+
+    def mostrar_balao_fala(self, texto: str):
+        """Abre ou atualiza o Balão de Fala Cyberpunk com o texto completo (thread-safe)."""
+        conteudo = (texto or "").strip()
+        if not conteudo:
+            return
+
+        self.ultima_fala_capri = conteudo
+        self.ultimo_codigo_extraido = self._extrair_blocos_codigo(conteudo)
+
+        def _renderizar_balao():
+            try:
+                if not (self.balao_fala and self.balao_fala.winfo_exists()):
+                    win = tk.Toplevel(self.root)
+                    win.overrideredirect(True)
+                    win.attributes("-topmost", True)
+                    win.configure(bg=self.BORDER_PINK)
+                    win.attributes("-alpha", 0.96)
+                    self.balao_fala = win
+
+                    # Moldura interna
+                    inner = tk.Frame(win, bg=self.BG_CARD, padx=10, pady=8)
+                    inner.pack(fill="both", expand=True, padx=1, pady=1)
+
+                    # Cabeçalho do Balão
+                    topo = tk.Frame(inner, bg=self.BG_CARD)
+                    topo.pack(fill="x", pady=(0, 6))
+
+                    tk.Frame(topo, bg=self.ACCENT_VIOLET, width=3, height=16).pack(side="left", padx=(0, 6))
+                    tk.Label(
+                        topo, text="CAPRI // FALA",
+                        fg=self.ACCENT_VIOLET, bg=self.BG_CARD, font=("Consolas", 9, "bold")
+                    ).pack(side="left")
+
+                    tk.Button(
+                        topo, text="✕", fg=self.TEXT_GRAY, bg="#28131E",
+                        activebackground="#FF0055", activeforeground="#FFFFFF",
+                        font=("Consolas", 8, "bold"), relief="flat", bd=0, cursor="hand2",
+                        command=self.fechar_balao_fala, padx=6, pady=1
+                    ).pack(side="right", padx=(4, 0))
+
+                    self.btn_copiar_tudo = tk.Button(
+                        topo, text="COPIAR", fg=self.ACCENT_CYAN, bg="#28131E",
+                        activebackground="#381A2A", activeforeground="#FFFFFF",
+                        font=("Consolas", 8, "bold"), relief="flat", bd=0, cursor="hand2",
+                        command=self._copiar_texto_balao, padx=7, pady=1
+                    )
+                    self.btn_copiar_tudo.pack(side="right", padx=3)
+
+                    self.btn_copiar_codigo = tk.Button(
+                        topo, text="COPIAR CÓDIGO", fg="#090D16", bg=self.ACCENT_LIME,
+                        activebackground="#84CC16", activeforeground="#090D16",
+                        font=("Consolas", 8, "bold"), relief="flat", bd=0, cursor="hand2",
+                        command=self._copiar_codigo_balao, padx=7, pady=1
+                    )
+
+                    tk.Frame(inner, bg=self.BORDER_DIM, height=1).pack(fill="x", pady=(0, 6))
+
+                    # Área de texto com rolagem (permite selecionar e dar Ctrl+C)
+                    corpo = tk.Frame(inner, bg=self.BG_BAR)
+                    corpo.pack(fill="both", expand=True)
+
+                    scroll = tk.Scrollbar(
+                        corpo, orient="vertical", bg=self.BG_CARD,
+                        troughcolor=self.BG_BAR, activebackground=self.BORDER_PINK
+                    )
+                    scroll.pack(side="right", fill="y")
+
+                    self.txt_balao = tk.Text(
+                        corpo,
+                        bg=self.BG_BAR,
+                        fg=self.TEXT_WHITE,
+                        insertbackground=self.ACCENT_CYAN,
+                        selectbackground=self.ACCENT_VIOLET,
+                        selectforeground="#FFFFFF",
+                        font=("Consolas", 9),
+                        wrap="word",
+                        relief="flat",
+                        bd=0,
+                        padx=8,
+                        pady=6,
+                        yscrollcommand=scroll.set
+                    )
+                    self.txt_balao.pack(side="left", fill="both", expand=True)
+                    scroll.config(command=self.txt_balao.yview)
+
+                # Mostra ou oculta o botão "COPIAR CÓDIGO" conforme existir bloco de código
+                if self.ultimo_codigo_extraido:
+                    self.btn_copiar_codigo.pack(side="right", padx=3)
+                else:
+                    self.btn_copiar_codigo.pack_forget()
+
+                # Atualiza o conteúdo
+                self.txt_balao.configure(state="normal")
+                self.txt_balao.delete("1.0", tk.END)
+                self.txt_balao.insert("1.0", self.ultima_fala_capri)
+                self.txt_balao.configure(state="disabled")
+                self.txt_balao.see("1.0")
+
+                # Calcula altura proporcional ao texto (mínimo 140px, máximo 420px com scroll)
+                linhas_estimadas = sum(max(1, math.ceil(len(l) / 48)) for l in self.ultima_fala_capri.splitlines())
+                altura_ideal = min(420, max(145, 65 + linhas_estimadas * 19))
+
+                self.balao_aberto = True
+                self.balao_fala.deiconify()
+                self.balao_fala.geometry(f"430x{altura_ideal}")
+                self._reposicionar_balao()
+                self.balao_fala.lift()
+            except Exception as e:
+                print(f"[Aviso Balão de Fala]: {e}")
+
+        try:
+            self.root.after(0, _renderizar_balao)
+        except Exception:
+            pass
+
+    def fechar_balao_fala(self):
+        self.balao_aberto = False
+        try:
+            if self.balao_fala and self.balao_fala.winfo_exists():
+                self.balao_fala.withdraw()
+        except Exception:
+            pass
+
+    def alternar_balao_fala(self):
+        if self.balao_aberto:
+            self.fechar_balao_fala()
+        elif self.ultima_fala_capri:
+            self.mostrar_balao_fala(self.ultima_fala_capri)
+
+    def ativar_modo_livre(self):
+        """Solta a Capri na tela (thread-safe)."""
+        def _executar():
+            if self.modo_livre is None:
+                from ui.modo_livre import CapriModoLivre
+                self.modo_livre = CapriModoLivre(self)
+            self.modo_livre.ativar()
+        try:
+            self.root.after(0, _executar)
+        except Exception:
+            pass
+
+    def desativar_modo_livre(self):
+        """Traz a Capri de volta para a caixa do HUD (thread-safe)."""
+        def _executar():
+            if self.modo_livre is not None:
+                self.modo_livre.desativar()
+        try:
+            self.root.after(0, _executar)
+        except Exception:
+            pass
+
+    def _copiar_texto_balao(self):
+        if not self.ultima_fala_capri:
+            return
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(self.ultima_fala_capri)
+            self.btn_copiar_tudo.configure(text="COPIADO!", fg=self.ACCENT_LIME)
+            self.root.after(1400, lambda: self.btn_copiar_tudo.configure(text="COPIAR", fg=self.ACCENT_CYAN))
+        except Exception:
+            pass
+
+    def _copiar_codigo_balao(self):
+        if not self.ultimo_codigo_extraido:
+            return
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(self.ultimo_codigo_extraido)
+            self.btn_copiar_codigo.configure(text="CÓDIGO COPIADO!")
+            self.root.after(1400, lambda: self.btn_copiar_codigo.configure(text="COPIAR CÓDIGO"))
+        except Exception:
+            pass
+
+    # =====================================================================
+    # FUNÇÕES DA BARRA DE PESQUISA, VISÃO E CONTROLES
+    # =====================================================================
+    def _atualizar_visual_visao(self):
+        if self.anexar_tela:
+            self.btn_visao_barra._cor_borda_atual = self.ACCENT_CYAN
+            self.btn_visao_barra.configure(bg=self.ACCENT_CYAN)
+            self.btn_visao_barra.lbl.configure(fg=self.ACCENT_CYAN)
+            self.borda_pesquisa.configure(bg=self.ACCENT_CYAN)
+            self.placeholder_texto = "Pergunte sobre sua tela..."
+        else:
+            self.btn_visao_barra._cor_borda_atual = self.BORDER_DIM
+            self.btn_visao_barra.configure(bg=self.BORDER_DIM)
+            self.btn_visao_barra.lbl.configure(fg=self.TEXT_GRAY)
+            self.borda_pesquisa.configure(bg=self.BORDER_PINK)
+            self.placeholder_texto = "Conversar com Capri..."
+
+    def _alternar_anexar_tela(self):
+        estava_placeholder = self.var_pesquisa.get().strip() in ("", "Conversar com Capri...", "Pergunte sobre sua tela...")
+        self.anexar_tela = not self.anexar_tela
+        self._atualizar_visual_visao()
+        if estava_placeholder:
+            self.var_pesquisa.set(self.placeholder_texto)
+            self.entry_pesquisa.configure(fg=self.ACCENT_CYAN if self.anexar_tela else self.TEXT_GRAY)
+
     def _focar_entrada_pesquisa(self, event=None):
         try:
             self.root.focus_force()
             self.entry_pesquisa.focus_set()
-            if self.var_pesquisa.get() == self.placeholder_texto:
+            if self.var_pesquisa.get() in ("Conversar com Capri...", "Pergunte sobre sua tela..."):
                 self.var_pesquisa.set("")
                 self.entry_pesquisa.configure(fg=self.TEXT_WHITE)
         except Exception:
             pass
 
     def _ao_ganhar_foco_pesquisa(self, event=None):
-        if self.var_pesquisa.get() == self.placeholder_texto:
+        if self.var_pesquisa.get() in ("Conversar com Capri...", "Pergunte sobre sua tela..."):
             self.var_pesquisa.set("")
             self.entry_pesquisa.configure(fg=self.TEXT_WHITE)
 
     def _ao_perder_foco_pesquisa(self, event=None):
         if not self.var_pesquisa.get().strip():
             self.var_pesquisa.set(self.placeholder_texto)
-            self.entry_pesquisa.configure(fg=self.TEXT_GRAY)
+            self.entry_pesquisa.configure(fg=self.ACCENT_CYAN if self.anexar_tela else self.TEXT_GRAY)
 
     def _submeter_pesquisa_interface(self, event=None):
         texto = self.var_pesquisa.get().strip()
-        if not texto or texto == self.placeholder_texto:
-            return
+        eh_placeholder = (not texto) or (texto in ("Conversar com Capri...", "Pergunte sobre sua tela..."))
+
+        if eh_placeholder:
+            if self.anexar_tela:
+                texto = "o que está acontecendo na tela?"
+            else:
+                return
+
         self.var_pesquisa.set("")
         self.entry_pesquisa.configure(fg=self.TEXT_WHITE)
-        self.enviar_comando_texto(texto)
 
-    def enviar_comando_texto(self, texto_comando: str):
+        usar_visao = self.anexar_tela
+        if texto.lower().startswith(("/tela", "/ver")):
+            usar_visao = True
+            texto = texto.split(" ", 1)[1].strip() if " " in texto else "o que está acontecendo na tela?"
+
+        if usar_visao:
+            self.anexar_tela = False
+            self._atualizar_visual_visao()
+            self.enviar_comando_texto(f"{texto} olha minha tela", legenda_exibicao=f'Você [TELA]: "{texto}"')
+        else:
+            self.enviar_comando_texto(texto)
+
+    def enviar_comando_texto(self, texto_comando: str, legenda_exibicao: str = ""):
         cmd = texto_comando.strip()
         if not cmd:
             return
+        legenda = legenda_exibicao or f'Você: "{cmd}"'
         print(f"  [Barra de Pesquisa]: '{cmd}'")
-        self.atualizar_estado("PROCESSANDO...", self.ACCENT_VIOLET, f"Você: \"{cmd}\"")
+        self.atualizar_estado("PROCESSANDO...", self.ACCENT_VIOLET, legenda)
         self.fila_comandos_texto.put(cmd)
 
     def tem_comando_texto(self) -> bool:
@@ -705,7 +826,7 @@ class CapriHUD:
                 return "capri-crouch-attentive.png", ""
             return "capri-lean_in-attentive.png", ""
 
-        if "TRANSCREVENDO" in estado or "PESQUISANDO" in estado or "PROCESSANDO" in estado:
+        if "TRANSCREVENDO" in estado or "PESQUISANDO" in estado or "PROCESSANDO" in estado or "ANALISANDO" in estado:
             pose = self.config.get("pose_padrao", "Padrao")
             if pose == "Bracos Cruzados":
                 return "capri-arms_crossed-focused.png", ""
@@ -756,6 +877,7 @@ class CapriHUD:
         x = self.root.winfo_pointerx() - self._offset_x
         y = self.root.winfo_pointery() - self._offset_y
         self.root.geometry(f"+{x}+{y}")
+        self._reposicionar_balao()
 
     def _animar_hud(self):
         if not self.rodando:
@@ -763,14 +885,12 @@ class CapriHUD:
         try:
             self.canvas_sprite.delete("all")
             w = max(440, self.canvas_sprite.winfo_width())
-            h = max(240, self.canvas_sprite.winfo_height())
+            h = max(230, self.canvas_sprite.winfo_height())
 
-            # 1. Linhas horizontais de monitor CRT (Scanlines)
             if not self.config.get("modo_recorte_transparente", False):
                 for y_line in range(18, h - 6, 5):
                     self.canvas_sprite.create_line(6, y_line, w - 6, y_line, fill=self.BG_SCANLINE, width=1)
 
-            # 2. Sprite Central da Capri
             nome_sprite, efeito = self._selecionar_nome_sprite_atual()
             foto_tk = self.sprites.obter_sprite_tk(nome_sprite, sobrepor_efeito=efeito)
 
@@ -791,13 +911,11 @@ class CapriHUD:
                     fill=self.TEXT_PINK, font=("Consolas", 10, "bold")
                 )
 
-            # 3. Telemetria discreta nos cantos inferiores do visor CRT
             pose_str = self.config.get("pose_padrao", "PADRAO").upper()
             self.canvas_sprite.create_text(18, h - 10, text=pose_str, fill="#6E5662", font=("Consolas", 7, "bold"), anchor="w")
             pontos_onda = "• " * 11
             self.canvas_sprite.create_text(w - 14, h - 10, text=f"{pontos_onda} v0.1.5", fill="#6E5662", font=("Consolas", 7), anchor="e")
 
-            # 4. Moldura Rosa do Visor + Cantoneiras Violetas
             self.canvas_sprite.create_rectangle(4, 14, w - 4, h - 2, outline=self.BORDER_PINK, width=1.5)
 
             cor_canto = self.ACCENT_VIOLET
@@ -808,7 +926,6 @@ class CapriHUD:
             self.canvas_sprite.create_line(2, h - 24, 2, h, fill=cor_canto, width=3)
             self.canvas_sprite.create_line(w - 2, h - 24, w - 2, h, fill=cor_canto, width=3)
 
-            # 5. Badge Sobreposto Superior Esquerdo: [ CAPRI // ESTADO ]
             texto_badge = f"CAPRI // {self.estado_atual}"
             largura_badge = max(135, len(texto_badge) * 8 + 20)
             self.canvas_sprite.create_rectangle(24, 3, 24 + largura_badge, 25, fill="#191024", outline=self.ACCENT_VIOLET, width=2)
@@ -817,7 +934,6 @@ class CapriHUD:
                 text=texto_badge, fill="#E2D9F3", font=("Consolas", 8, "bold")
             )
 
-            # 6. Animação da Barra de Progresso / Voz no Card "CAPRI pre-alpha"
             self.fase_onda += 0.25
             if self.painel_status_visivel and self.canvas_progresso.winfo_exists():
                 self.canvas_progresso.delete("all")
@@ -852,13 +968,19 @@ class CapriHUD:
             "OUVINDO VOCÊ...": "Captando áudio do microfone...",
             "TRANSCREVENDO...": "Processando voz localmente na RAM...",
             "PESQUISANDO IA...": f"Consultando API ({self.config.get('provedor_ia', 'Gemini')})...",
+            "ANALISANDO TELA...": "Analisando sua tela com Gemini...",
             "PROCESSANDO...": "Executando instrução...",
             "FALANDO...": "Transmitindo resposta de voz...",
             "MIC SILENCIADO": "Microfone silenciado (Use a barra abaixo)."
         }
         self.subtitulo_card = mapa_subtitulos.get(novo_estado.upper(), f"Status: {novo_estado}")
+
         if legenda:
-            self.legenda_card = legenda
+            # Mantém a legenda do card principal em 1 linha compacta para nunca deslocar a barra
+            linha_unica = re.sub(r"\s+", " ", legenda).strip()
+            if len(linha_unica) > 54:
+                linha_unica = linha_unica[:51].rstrip() + "..."
+            self.legenda_card = linha_unica
 
         def _atualizar_ui():
             if hasattr(self, "lbl_subtitulo_card") and self.lbl_subtitulo_card.winfo_exists():
@@ -879,7 +1001,7 @@ class CapriHUD:
                 self.btn_mic_barra._cor_borda_atual = "#FF0055"
                 self.btn_mic_barra.configure(bg="#FF0055")
                 self.btn_mic_barra.lbl.configure(text="🔇", fg="#FF0055")
-            self.atualizar_estado("MIC SILENCIADO", "#FF0055", "Microfone mutado. Você ainda pode digitar na barra abaixo.")
+            self.atualizar_estado("MIC SILENCIADO", "#FF0055", "Microfone mutado. Use a barra abaixo.")
         else:
             if hasattr(self, "btn_pausa"):
                 self.btn_pausa.configure(text="MIC ON", bg="#00FF66", fg="#090D16")
@@ -887,7 +1009,7 @@ class CapriHUD:
                 self.btn_mic_barra._cor_borda_atual = "#00FF66"
                 self.btn_mic_barra.configure(bg="#00FF66")
                 self.btn_mic_barra.lbl.configure(text="🎙", fg="#00FF66")
-            self.atualizar_estado("EM ESPERA", self.BORDER_PINK, "Escuta ativa. Diga 'Capri' ou digite abaixo.")
+            self.atualizar_estado("EM ESPERA", self.BORDER_PINK, "Escuta ativa. Diga 'Capri' ou digite.")
 
     def _obter_pasta_assets(self) -> str:
         if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
@@ -975,16 +1097,41 @@ class CapriHUD:
 
     def ocultar_para_bandeja(self):
         self.root.withdraw()
+        try:
+            if self.balao_fala and self.balao_fala.winfo_exists():
+                self.balao_fala.withdraw()
+        except Exception:
+            pass
 
     def mostrar_da_bandeja(self):
+        if self.modo_livre and self.modo_livre.ativo:
+            self.modo_livre.desativar()
+            return
         self.root.deiconify()
         self.root.lift()
+        try:
+            if self.balao_aberto and self.balao_fala and self.balao_fala.winfo_exists():
+                self.balao_fala.deiconify()
+                self._reposicionar_balao()
+                self.balao_fala.lift()
+        except Exception:
+            pass
 
     def desligar_tudo(self):
         self.rodando = False
         try:
             if self.icone_bandeja:
                 self.icone_bandeja.stop()
+        except Exception:
+            pass
+        try:
+            if self.balao_fala and self.balao_fala.winfo_exists():
+                self.balao_fala.destroy()
+        except Exception:
+            pass
+        try:
+            if self.modo_livre and self.modo_livre.win and self.modo_livre.win.winfo_exists():
+                self.modo_livre.win.destroy()
         except Exception:
             pass
         try:

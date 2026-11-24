@@ -5,7 +5,12 @@ import mss
 from PIL import Image
 from google.genai import types
 
+from core.logger import obter_logger
+
+log = obter_logger("visao")
+
 MODELO_VISAO = "gemini-3.5-flash"
+MODELOS_VISAO_FALLBACK = ["gemini-3.5-flash", "gemini-3.5-flash-lite"]
 
 
 def capturar_tela_jpeg(largura_max: int = 1024, qualidade: int = 75, monitor_idx: int = 1) -> bytes:
@@ -28,15 +33,19 @@ def capturar_tela_jpeg(largura_max: int = 1024, qualidade: int = 75, monitor_idx
 
 def analisar_tela_sob_demanda(client, pedido_usuario: str) -> str:
     """
-    Modo Sob Demanda: lê a tela em alta nitidez para ajudar com código,
+    Modo Sob Demanda: lê a tela em boa nitidez para ajudar com código,
     explicar erros ou responder qualquer pergunta sobre o que está aberto.
     """
     if client is None:
         return "Configure sua chave da API do Gemini antes de usar a visão de tela."
 
-    # Resolução maior (1280px) garante que fontes pequenas de código fiquem legíveis
-    img_bytes = capturar_tela_jpeg(largura_max=1280, qualidade=85)
-    parte_imagem = types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")
+    try:
+        # 1024px / qualidade 75 mantém código legível e reduz tempo de upload/processamento
+        img_bytes = capturar_tela_jpeg(largura_max=1024, qualidade=75)
+        parte_imagem = types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg")
+    except Exception as e:
+        log.warning("Falha ao capturar tela para visão sob demanda: %s", e)
+        return "Não consegui capturar a imagem da sua tela agora."
 
     prompt = (
         "Você é a Capri, uma assistente virtual de PC com personalidade cyberpunk, "
@@ -48,15 +57,27 @@ def analisar_tela_sob_demanda(client, pedido_usuario: str) -> str:
         "- Seja breve o suficiente para fazer sentido tanto lendo no card quanto ouvindo por voz."
     )
 
-    try:
-        resp = client.models.generate_content(
-            model=MODELO_VISAO,
-            contents=[prompt, parte_imagem]
+    ultimo_erro = None
+    for modelo in MODELOS_VISAO_FALLBACK:
+        try:
+            resp = client.models.generate_content(
+                model=modelo,
+                contents=[prompt, parte_imagem],
+            )
+            texto = (getattr(resp, "text", "") or "").strip()
+            if texto:
+                log.info("Visão sob demanda respondida via %s", modelo)
+                return texto
+        except Exception as e:
+            ultimo_erro = e
+            log.warning("Erro Visão Sob Demanda (%s): %s", modelo, e)
+
+    if ultimo_erro and "504" in str(ultimo_erro):
+        return (
+            "O servidor do Gemini demorou demais para responder a imagem (erro 504). "
+            "Tente novamente em alguns segundos."
         )
-        return (resp.text or "").strip() or "Olhei a tela, mas não consegui identificar detalhes suficientes."
-    except Exception as e:
-        print(f"[Erro Visão Sob Demanda]: {e}")
-        return "Tive um problema ao analisar a imagem da sua tela."
+    return "Tive um problema ao analisar a imagem da sua tela."
 
 
 class ObservadorTela:
@@ -83,11 +104,13 @@ class ObservadorTela:
         self.ativo = True
         self.thread = threading.Thread(target=self._loop_observador, daemon=True)
         self.thread.start()
-        print("  [Visão]: Modo Observador ATIVADO.")
+        log.info("Modo Observador ATIVADO.")
 
     def parar(self):
+        if not self.ativo:
+            return
         self.ativo = False
-        print("  [Visão]: Modo Observador DESATIVADO.")
+        log.info("Modo Observador DESATIVADO.")
 
     def _loop_observador(self):
         while self.ativo and self.hud.rodando:
@@ -116,7 +139,9 @@ class ObservadorTela:
                     self.ultimo_resumo = comentario
 
                     # Ativa sprite de comemoração se for gol, vitória ou 1º lugar
-                    palavras_hype = ("gol", "golaço", "primeiro", "1º", "vitória", "venceu", "ganhou", "pódio")
+                    palavras_hype = (
+                        "gol", "golaço", "primeiro", "1º", "vitória", "venceu", "ganhou", "pódio"
+                    )
                     if any(p in comentario.lower() for p in palavras_hype):
                         self.hud.acionar_sprite_temporario("capri-idle-happy.png", duracao=4.0)
 
@@ -131,7 +156,7 @@ class ObservadorTela:
 
                 time.sleep(2.5)
             except Exception as e:
-                print(f"[Aviso Observador de Tela]: {e}")
+                log.warning("Aviso Observador de Tela: %s", e)
                 time.sleep(4.0)
 
     def _avaliar_jogada(self, client, frame_1: bytes, frame_2: bytes) -> str:
@@ -153,8 +178,16 @@ class ObservadorTela:
             "Se houver um evento real, responda em português do Brasil com NO MÁXIMO 1 frase curta e natural."
         )
 
-        resp = client.models.generate_content(
-            model=MODELO_VISAO,
-            contents=[prompt, p1, p2]
-        )
-        return (resp.text or "").strip()
+        for modelo in MODELOS_VISAO_FALLBACK:
+            try:
+                resp = client.models.generate_content(
+                    model=modelo,
+                    contents=[prompt, p1, p2],
+                )
+                texto = (getattr(resp, "text", "") or "").strip()
+                if texto:
+                    return texto
+            except Exception as e:
+                log.warning("Aviso Observador (%s): %s", modelo, e)
+
+        return "SILENCIO"

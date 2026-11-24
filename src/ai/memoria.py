@@ -5,11 +5,15 @@ import time
 import sqlite3
 import threading
 from datetime import datetime
+from typing import Any
+
 from google.genai import types
 from core.logger import obter_logger
-log = obter_logger("memoria")  # ou "cerebro", "memoria", "modo_livre", "voz"
+
+log = obter_logger("memoria")
 
 DIAS_RETENCAO_USUARIO = 20
+INTERVALO_LIMPEZA_SEGUNDOS = 6 * 3600  # Limpeza automática no máximo 1x a cada 6 horas
 MODELO_MEMORIA = "gemini-3.5-flash-lite"
 
 GATILHOS_EVENTO = (
@@ -18,14 +22,14 @@ GATILHOS_EVENTO = (
     "projeto", "entrega", "campeonato", "torneio", "faculdade", "aula",
     "amanha", "amanhã", "semana que vem", "segunda", "terca", "terça",
     "quarta", "quinta", "sexta", "sabado", "sábado", "domingo",
-    "vou fazer", "tenho que", "preciso entregar", "vou tentar"
+    "vou fazer", "tenho que", "preciso entregar", "vou tentar",
 )
 
 STOPWORDS_PT = {
     "como", "para", "com", "uma", "uns", "umas", "isso", "isto", "esse", "essa",
     "aqui", "onde", "quando", "qual", "quais", "porque", "sobre", "voce", "você",
     "capri", "mais", "muito", "pode", "fazer", "quero", "esta", "está", "estou",
-    "tinha", "falei", "disse", "tudo", "nada", "agora", "hoje", "ontem"
+    "tinha", "falei", "disse", "tudo", "nada", "agora", "hoje", "ontem",
 }
 
 
@@ -43,13 +47,17 @@ class MemoriaCapri:
     def __init__(self, pasta_projeto: str):
         self.caminho_db = os.path.join(pasta_projeto, "capri_memoria.db")
         self._lock = threading.Lock()
+        self._fechada = False
+        self._ultima_limpeza_ts = 0.0
         self.conn = sqlite3.connect(self.caminho_db, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self._criar_tabelas()
-        self.limpar_memorias_antigas()
+        self.limpar_memorias_antigas(forcar=True)
 
-    def _criar_tabelas(self):
+    def _criar_tabelas(self) -> None:
         with self._lock:
+            if self._fechada:
+                return
             cur = self.conn.cursor()
 
             cur.execute("""
@@ -96,10 +104,16 @@ class MemoriaCapri:
 
             self.conn.commit()
 
-    def limpar_memorias_antigas(self):
-        """Remove conversas e eventos do usuário com mais de 20 dias."""
-        limite_ts = time.time() - (DIAS_RETENCAO_USUARIO * 86400)
+    def limpar_memorias_antigas(self, forcar: bool = False) -> None:
+        """Remove conversas e eventos com mais de 20 dias (respeitando intervalo periódico)."""
+        agora = time.time()
+        if not forcar and (agora - self._ultima_limpeza_ts) < INTERVALO_LIMPEZA_SEGUNDOS:
+            return
+
+        limite_ts = agora - (DIAS_RETENCAO_USUARIO * 86400)
         with self._lock:
+            if self._fechada:
+                return
             cur = self.conn.cursor()
             cur.execute("DELETE FROM conversas WHERE criado_em < ?", (limite_ts,))
             cur.execute("DELETE FROM eventos_usuario WHERE citado_em < ?", (limite_ts,))
@@ -108,11 +122,12 @@ class MemoriaCapri:
                 WHERE id NOT IN (SELECT id FROM reigns_jogadas ORDER BY id DESC LIMIT 400)
             """)
             self.conn.commit()
+            self._ultima_limpeza_ts = agora
 
     # =====================================================================
     # 1. MEMÓRIA DO USUÁRIO (20 DIAS + FOLLOW-UP PROATIVO)
     # =====================================================================
-    def registrar_conversa(self, usuario_msg: str, capri_msg: str):
+    def registrar_conversa(self, usuario_msg: str, capri_msg: str) -> None:
         u = (usuario_msg or "").strip()
         c = (capri_msg or "").strip()
         if not u or not c:
@@ -120,6 +135,8 @@ class MemoriaCapri:
         if len(c) > 900:
             c = c[:900] + "\n...[trecho longo resumido na memória]"
         with self._lock:
+            if self._fechada:
+                return
             self.conn.execute(
                 "INSERT INTO conversas (usuario_msg, capri_msg, criado_em) VALUES (?, ?, ?)",
                 (u, c, time.time()),
@@ -127,10 +144,12 @@ class MemoriaCapri:
             self.conn.commit()
 
     def obter_contexto_usuario(self, consulta_atual: str = "") -> str:
-        self.limpar_memorias_antigas()
-        partes = []
+        self.limpar_memorias_antigas(forcar=False)
+        partes: list[str] = []
 
         with self._lock:
+            if self._fechada:
+                return ""
             cur = self.conn.cursor()
 
             # Eventos dos últimos 20 dias
@@ -144,7 +163,9 @@ class MemoriaCapri:
                     data_str = datetime.fromtimestamp(ev["citado_em"]).strftime("%d/%m")
                     status = "já perguntado" if ev["perguntado"] else "aguardando retorno"
                     linhas_ev.append(f"- [{data_str}] {ev['descricao']} ({status})")
-                partes.append("Eventos e compromissos que o usuário citou recentemente:\n" + "\n".join(linhas_ev))
+                partes.append(
+                    "Eventos e compromissos que o usuário citou recentemente:\n" + "\n".join(linhas_ev)
+                )
 
             # Últimas 6 interações cronológicas
             cur.execute(
@@ -155,7 +176,10 @@ class MemoriaCapri:
 
             # Lembranças relacionadas por palavras-chave (até 20 dias atrás)
             termos = [
-                p for p in re.findall(r"[a-zA-ZáéíóúâêôãõçÁÉÍÓÚÂÊÔÃÕÇ0-9]{4,}", (consulta_atual or "").lower())
+                p
+                for p in re.findall(
+                    r"[a-zA-ZáéíóúâêôãõçÁÉÍÓÚÂÊÔÃÕÇ0-9]{4,}", (consulta_atual or "").lower()
+                )
                 if p not in STOPWORDS_PT
             ]
             lembrancas_antigas = []
@@ -183,27 +207,31 @@ class MemoriaCapri:
                 linhas_ant = []
                 for r in sorted(lembrancas_antigas, key=lambda x: x["criado_em"]):
                     dt = datetime.fromtimestamp(r["criado_em"]).strftime("%d/%m")
-                    linhas_ant.append(f"[{dt}] Usuário: {r['usuario_msg']} | Capri: {r['capri_msg'][:180]}")
+                    linhas_ant.append(
+                        f"[{dt}] Usuário: {r['usuario_msg']} | Capri: {r['capri_msg'][:180]}"
+                    )
                 partes.append("Lembranças relevantes dos últimos 20 dias:\n" + "\n".join(linhas_ant))
 
             if recentes:
                 linhas_rec = []
                 for r in recentes:
                     dt = datetime.fromtimestamp(r["criado_em"]).strftime("%d/%m %H:%M")
-                    linhas_rec.append(f"[{dt}] Usuário: {r['usuario_msg']}\n[{dt}] Capri: {r['capri_msg'][:260]}")
+                    linhas_rec.append(
+                        f"[{dt}] Usuário: {r['usuario_msg']}\n[{dt}] Capri: {r['capri_msg'][:260]}"
+                    )
                 partes.append("Conversa mais recente:\n" + "\n".join(linhas_rec))
 
         return "\n\n".join(partes)
 
-    def analisar_e_salvar_evento_async(self, client, mensagem_usuario: str):
+    def analisar_e_salvar_evento_async(self, client: Any, mensagem_usuario: str) -> None:
         msg = (mensagem_usuario or "").strip()
-        if not client or len(msg) < 10:
+        if not client or len(msg) < 10 or self._fechada:
             return
 
         if not any(g in msg.lower() for g in GATILHOS_EVENTO):
             return
 
-        def _extrair():
+        def _extrair() -> None:
             try:
                 hoje = datetime.now().strftime("%d/%m/%Y (%A)")
                 prompt = (
@@ -229,8 +257,8 @@ class MemoriaCapri:
                         temperature=0.1,
                     ),
                 )
-                dados = json.loads(_limpar_json_bruto(resp.text or "{}"))
-                if not dados.get("tem_evento"):
+                dados = json.loads(_limpar_json_bruto(getattr(resp, "text", "") or "{}"))
+                if not isinstance(dados, dict) or not dados.get("tem_evento"):
                     return
 
                 desc = str(dados.get("descricao", "")).strip()
@@ -242,6 +270,8 @@ class MemoriaCapri:
                 perguntar_apos = agora + (dias * 86400)
 
                 with self._lock:
+                    if self._fechada:
+                        return
                     cur = self.conn.cursor()
                     cur.execute(
                         "SELECT id FROM eventos_usuario WHERE lower(descricao) = ? AND perguntado = 0",
@@ -254,15 +284,17 @@ class MemoriaCapri:
                         (desc, agora, perguntar_apos),
                     )
                     self.conn.commit()
-                print(f"  [Memória Capri]: Evento salvo -> '{desc}' (vou perguntar em {dias} dia(s))")
+                log.info("Evento salvo -> '%s' (perguntar em %d dia(s))", desc, dias)
             except Exception as e:
-                print(f"  [Aviso Extração de Evento]: {e}")
+                log.warning("Aviso Extração de Evento: %s", e)
 
         threading.Thread(target=_extrair, daemon=True).start()
 
-    def obter_evento_para_perguntar(self) -> dict | None:
+    def obter_evento_para_perguntar(self) -> dict[str, Any] | None:
         agora = time.time()
         with self._lock:
+            if self._fechada:
+                return None
             cur = self.conn.cursor()
             cur.execute(
                 """
@@ -278,13 +310,17 @@ class MemoriaCapri:
             dias_atras = max(1, int((agora - row["citado_em"]) // 86400))
             return {"id": row["id"], "descricao": row["descricao"], "dias_atras": dias_atras}
 
-    def marcar_evento_como_perguntado(self, evento_id: int):
+    def marcar_evento_como_perguntado(self, evento_id: int) -> None:
         with self._lock:
+            if self._fechada:
+                return
             self.conn.execute("UPDATE eventos_usuario SET perguntado = 1 WHERE id = ?", (evento_id,))
             self.conn.commit()
 
     def listar_eventos_ativos(self) -> list[str]:
         with self._lock:
+            if self._fechada:
+                return []
             cur = self.conn.cursor()
             cur.execute("SELECT descricao, citado_em FROM eventos_usuario ORDER BY citado_em DESC LIMIT 10")
             return [
@@ -297,6 +333,8 @@ class MemoriaCapri:
     # =====================================================================
     def iniciar_nova_run_reigns(self) -> int:
         with self._lock:
+            if self._fechada:
+                return 1
             cur = self.conn.cursor()
             cur.execute("""
                 SELECT MAX(m) AS max_run FROM (
@@ -308,8 +346,18 @@ class MemoriaCapri:
             row = cur.fetchone()
             return int(row["max_run"] or 0) + 1
 
-    def registrar_jogada_reigns(self, run_id: int, turno: int, carta: str, escolha: str, barras: dict, motivo: str):
+    def registrar_jogada_reigns(
+        self,
+        run_id: int,
+        turno: int,
+        carta: str,
+        escolha: str,
+        barras: dict[str, Any],
+        motivo: str,
+    ) -> None:
         with self._lock:
+            if self._fechada:
+                return
             self.conn.execute(
                 """
                 INSERT INTO reigns_jogadas (run_id, turno, carta, escolha, barras_json, motivo, criado_em)
@@ -320,20 +368,29 @@ class MemoriaCapri:
             self.conn.commit()
 
     def obter_resumo_aprendizado_reigns(self, run_id_atual: int) -> str:
-        partes = []
+        partes: list[str] = []
         with self._lock:
+            if self._fechada:
+                return "Primeira run registrada. Mantenha todas as barras perto de 50%."
             cur = self.conn.cursor()
 
-            cur.execute("SELECT COALESCE(MAX(turnos_sobrevividos), 0) AS recorde, COUNT(*) AS total FROM reigns_licoes")
+            cur.execute(
+                "SELECT COALESCE(MAX(turnos_sobrevividos), 0) AS recorde, COUNT(*) AS total FROM reigns_licoes"
+            )
             stats = cur.fetchone()
             if stats and stats["total"] > 0:
-                partes.append(f"Estatísticas: {stats['total']} reinados encerrados | Recorde: {stats['recorde']} turnos.")
+                partes.append(
+                    f"Estatísticas: {stats['total']} reinados encerrados | Recorde: {stats['recorde']} turnos."
+                )
 
             cur.execute("SELECT run_id, turnos_sobrevividos, licao FROM reigns_licoes ORDER BY id DESC LIMIT 12")
             licoes = cur.fetchall()
             if licoes:
                 linhas = [f"- [Run #{r['run_id']} | {r['turnos_sobrevividos']}t]: {r['licao']}" for r in licoes]
-                partes.append("LIÇÕES APRENDIDAS EM RUNS PASSADAS (use isso para NÃO repetir os mesmos erros):\n" + "\n".join(linhas))
+                partes.append(
+                    "LIÇÕES APRENDIDAS EM RUNS PASSADAS (use isso para NÃO repetir os mesmos erros):\n"
+                    + "\n".join(linhas)
+                )
 
             cur.execute(
                 """
@@ -352,13 +409,21 @@ class MemoriaCapri:
 
         return "\n\n".join(partes) if partes else "Primeira run registrada. Mantenha todas as barras perto de 50%."
 
-    def aprender_com_morte_reigns_async(self, client, run_id: int, turnos_sobrevividos: int, causa_morte: str = ""):
-        if not client or turnos_sobrevividos < 1:
+    def aprender_com_morte_reigns_async(
+        self,
+        client: Any,
+        run_id: int,
+        turnos_sobrevividos: int,
+        causa_morte: str = "",
+    ) -> None:
+        if not client or turnos_sobrevividos < 1 or self._fechada:
             return
 
-        def _processar_post_mortem():
+        def _processar_post_mortem() -> None:
             try:
                 with self._lock:
+                    if self._fechada:
+                        return
                     cur = self.conn.cursor()
                     cur.execute(
                         """
@@ -382,22 +447,37 @@ class MemoriaCapri:
                     "para a Capri NÃO cometer o mesmo erro nas próximas runs."
                 )
                 resp = client.models.generate_content(model=MODELO_MEMORIA, contents=prompt)
-                licao = (resp.text or "").strip().replace("\n", " ")
+                licao = (getattr(resp, "text", "") or "").strip().replace("\n", " ")
                 if licao:
                     with self._lock:
+                        if self._fechada:
+                            return
                         self.conn.execute(
                             "INSERT INTO reigns_licoes (run_id, turnos_sobrevividos, licao, criado_em) VALUES (?, ?, ?, ?)",
                             (run_id, turnos_sobrevividos, licao, time.time()),
                         )
                         self.conn.commit()
-                    print(f"  [Reigns Memória] Nova lição salva (Run #{run_id}): {licao}")
+                    log.info("[Reigns Memória] Nova lição salva (Run #%d): %s", run_id, licao)
             except Exception as e:
-                print(f"  [Aviso Post-Mortem Reigns]: {e}")
+                log.warning("Aviso Post-Mortem Reigns: %s", e)
 
         threading.Thread(target=_processar_post_mortem, daemon=True).start()
 
-    def limpar_memoria_reigns(self):
+    def limpar_memoria_reigns(self) -> None:
         with self._lock:
+            if self._fechada:
+                return
             self.conn.execute("DELETE FROM reigns_jogadas")
             self.conn.execute("DELETE FROM reigns_licoes")
             self.conn.commit()
+
+    def fechar(self) -> None:
+        """Fecha a conexão SQLite com segurança ao encerrar a Capri."""
+        with self._lock:
+            if self._fechada:
+                return
+            self._fechada = True
+            try:
+                self.conn.close()
+            except Exception:
+                pass

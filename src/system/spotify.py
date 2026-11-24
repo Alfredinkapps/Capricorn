@@ -2,20 +2,29 @@ import os
 import time
 import ctypes
 from urllib.parse import quote
-from dicionario_comandos import (
+
+from core.logger import obter_logger
+from audio.comandos import (
     PADROES_MUSICA_DIRETO,
     PALAVRAS_GENERICAS_MUSICA,
     VERBOS_PEDIR_MUSICA,
     COMANDOS_MIDIA,
-    normalizar_frase
+    normalizar_frase,
 )
+
+log = obter_logger("spotify")
 
 USER32 = ctypes.windll.user32
 KERNEL32 = ctypes.windll.kernel32
 
 
 class _RECT(ctypes.Structure):
-    _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long), ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+    _fields_ = [
+        ("left", ctypes.c_long),
+        ("top", ctypes.c_long),
+        ("right", ctypes.c_long),
+        ("bottom", ctypes.c_long),
+    ]
 
 
 class _POINT(ctypes.Structure):
@@ -85,17 +94,21 @@ def _forcar_foco_janela(hwnd: int):
         _pressionar_tecla_fisica(0x12, True)
         time.sleep(0.18)
     except Exception as e:
-        print(f"[Aviso foco Spotify]: {e}")
+        log.warning("Aviso foco Spotify: %s", e)
 
 
 def tocar_musica_spotify(nome_musica: str) -> str:
-    limpo = nome_musica.strip()
+    limpo = (nome_musica or "").strip()
+    if not limpo:
+        return "Qual música você quer que eu coloque no Spotify?"
+
     uri_busca = f"spotify:search:{quote(limpo)}"
     ja_estava_aberto = encontrar_janela_spotify() != 0
 
     try:
         os.startfile(uri_busca)
     except Exception as e:
+        log.warning("Falha ao abrir URI do Spotify: %s", e)
         return f"Não encontrei o aplicativo do Spotify instalado: {str(e)}"
 
     if ja_estava_aberto:
@@ -133,9 +146,13 @@ def tocar_musica_spotify(nome_musica: str) -> str:
                 time.sleep(0.04)
                 _pressionar_tecla_fisica(0x0D, True)
         except Exception as e:
-            print(f"[Aviso ao dar play no Spotify]: {e}")
+            log.warning("Aviso ao dar play no Spotify: %s", e)
 
-    return f"Trocando para {limpo} no Spotify." if ja_estava_aberto else f"Colocando {limpo} para tocar no Spotify."
+    return (
+        f"Trocando para {limpo} no Spotify."
+        if ja_estava_aberto
+        else f"Colocando {limpo} para tocar no Spotify."
+    )
 
 
 def ajustar_volume_spotify(acao: str, nivel_porcentagem: int = -1) -> str:
@@ -171,7 +188,7 @@ def ajustar_volume_spotify(acao: str, nivel_porcentagem: int = -1) -> str:
                 _forcar_foco_janela(janela_anterior)
             return msg
         except Exception as e:
-            print(f"[Aviso volume Spotify]: {e}")
+            log.warning("Aviso volume Spotify: %s", e)
 
     tecla_win = 0xAF if acao == "aumentar" else 0xAE
     for _ in range(5):
@@ -206,7 +223,8 @@ def detectar_pedido_musica(comando: str) -> tuple[bool, str]:
     if "volume" in cmd:
         return False, ""
 
-    if any(p in cmd for p in ("música", "musica", "som", "spotify", "tocar", "toque", "ouvir", "escutar")):
+    gatilhos_busca = ("música", "musica", "som", "spotify") + VERBOS_PEDIR_MUSICA
+    if any(p in cmd for p in gatilhos_busca):
         for regex in PADROES_MUSICA_DIRETO:
             m = regex.search(cmd)
             if m:
@@ -214,7 +232,9 @@ def detectar_pedido_musica(comando: str) -> tuple[bool, str]:
                 if nome and nome not in PALAVRAS_GENERICAS_MUSICA:
                     return True, nome
 
-    if any(p in cmd for p in ("música", "musica", "som")) and any(v in cmd for v in VERBOS_PEDIR_MUSICA):
+    if any(p in cmd for p in ("música", "musica", "som")) and any(
+        v in cmd for v in VERBOS_PEDIR_MUSICA
+    ):
         return True, ""
 
     return False, ""

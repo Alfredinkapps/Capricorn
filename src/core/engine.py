@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import random
 import threading
@@ -7,6 +8,7 @@ import speech_recognition as sr
 from google import genai
 
 from core.config import PASTA_PROJETO, PASTA_DATA, configurar_inicializacao_windows
+from core.logger import obter_logger
 from ui.hud import CapriHUD
 from audio.voz import falar, ouvir_microfone_com_hud, RESPOSTAS_CHAMADA
 from audio.comandos import extrair_comando_apos_nome, normalizar_frase
@@ -14,31 +16,38 @@ from ai.cerebro import obter_lista_modelos_rapidos, processar_comando_usuario
 from ai.visao import ObservadorTela
 from ai.memoria import MemoriaCapri
 from agents.reigns import AgenteReigns
-from core.logger import obter_logger
 
 log = obter_logger("engine")
 
+_REGEX_PREFIXO_CAPRI_TEXTO = re.compile(
+    r"^(?:(?:oi|olá|ola|ei|hey|fala)\s+)?capri(?:c[oó]rnio)?[\s,!.:-]+",
+    re.IGNORECASE,
+)
 
-def executar_comando_seguro(texto_bruto: str, hud: CapriHUD, estado: dict, lock: threading.Lock, origem: str = "VOZ"):
-    """Normaliza e executa comandos de voz ou texto sem travar o HUD em caso de erro."""
-    texto_norm = normalizar_frase(texto_bruto) if texto_bruto else ""
-    if not texto_norm:
-        texto_norm = texto_bruto.strip().lower()
-    if not texto_norm:
+
+def executar_comando_seguro(
+    texto_bruto: str,
+    hud: CapriHUD,
+    estado: dict,
+    lock: threading.Lock,
+    origem: str = "VOZ",
+):
+    """Normaliza (apenas para voz) e executa comandos sem travar o HUD em caso de erro."""
+    texto_limpo = (texto_bruto or "").strip()
+    if not texto_limpo:
         return
 
     if origem == "TEXTO":
-        chamou, resto = extrair_comando_apos_nome(texto_norm)
-        comando_final = resto if (chamou and len(resto) >= 2) else texto_norm
-    else:
-        comando_final = texto_norm
-
-    if origem == "TEXTO":
+        # Preserva o texto digitado intacto (remove apenas vocativo explícito 'Capri, ...' no início)
+        sem_prefixo = _REGEX_PREFIXO_CAPRI_TEXTO.sub("", texto_limpo).strip()
+        comando_final = sem_prefixo if len(sem_prefixo) >= 2 else texto_limpo
         try:
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.stop()
         except Exception:
             pass
+    else:
+        comando_final = normalizar_frase(texto_limpo) or texto_limpo.lower()
 
     with lock:
         try:
@@ -52,6 +61,7 @@ def executar_comando_seguro(texto_bruto: str, hud: CapriHUD, estado: dict, lock:
                 observador=estado.get("observador"),
                 agente_reigns=estado.get("agente_reigns"),
                 memoria=estado.get("memoria"),
+                origem=origem,
             )
         except Exception as e:
             log.exception("Erro ao processar comando (%s)", origem)
@@ -86,6 +96,7 @@ def loop_mensagens_texto(hud: CapriHUD, estado: dict, lock: threading.Lock):
 def loop_cerebro_capri(hud: CapriHUD, estado: dict, lock: threading.Lock):
     os.chdir(PASTA_PROJETO)
     configurar_inicializacao_windows(hud.config.get("iniciar_com_windows", True))
+    primeira_inicializacao = True
 
     while hud.rodando:
         try:
@@ -98,7 +109,8 @@ def loop_cerebro_capri(hud: CapriHUD, estado: dict, lock: threading.Lock):
             if chave_gemini:
                 os.environ["GEMINI_API_KEY"] = chave_gemini
                 try:
-                    client = genai.Client(http_options={"timeout": 20000})
+                    # Timeout de 60s evita erro 504 em chamadas multimodais (Visão, Observador e Reigns)
+                    client = genai.Client(http_options={"timeout": 60000})
                     modelos = obter_lista_modelos_rapidos(client)
                 except Exception as e:
                     log.warning("Falha ao inicializar cliente Gemini: %s", e)
@@ -106,28 +118,37 @@ def loop_cerebro_capri(hud: CapriHUD, estado: dict, lock: threading.Lock):
 
             estado["client"] = client
             estado["modelos"] = modelos
-            estado["historico"] = []
+            if primeira_inicializacao:
+                estado["historico"] = []
             estado["pronto"] = True
 
-            with lock:
-                falar(hud, "Sistemas da Capri online. Módulos de controle e pesquisa carregados.")
+            if primeira_inicializacao:
+                with lock:
+                    falar(hud, "Sistemas da Capri online. Módulos de controle e pesquisa carregados.")
 
-            # Acompanhamento proativo de eventos citados nos últimos 20 dias
-            memoria = estado.get("memoria")
-            if memoria:
-                evento_pendente = memoria.obter_evento_para_perguntar()
-                if evento_pendente:
-                    time.sleep(1.5)
-                    desc = evento_pendente["descricao"]
-                    dias = evento_pendente["dias_atras"]
-                    pergunta = f"Ei, faz uns {dias} dias que você comentou sobre {desc}. Como foi lá?"
-                    with lock:
-                        falar(hud, pergunta, usar_cache=False)
-                    memoria.marcar_evento_como_perguntado(evento_pendente["id"])
-                    memoria.registrar_conversa("[Sistema: acompanhamento proativo]", pergunta)
+                # Acompanhamento proativo de eventos citados nos últimos 20 dias
+                memoria = estado.get("memoria")
+                if memoria:
+                    evento_pendente = memoria.obter_evento_para_perguntar()
+                    if evento_pendente:
+                        time.sleep(1.5)
+                        desc = evento_pendente["descricao"]
+                        dias = evento_pendente["dias_atras"]
+                        pergunta = f"Ei, faz uns {dias} dias que você comentou sobre {desc}. Como foi lá?"
+                        with lock:
+                            falar(hud, pergunta, usar_cache=False)
+                        memoria.marcar_evento_como_perguntado(evento_pendente["id"])
+                        memoria.registrar_conversa("[Sistema: acompanhamento proativo]", pergunta)
+                primeira_inicializacao = False
+            else:
+                log.info("Cliente de IA recarregado após alteração nas configurações.")
 
             estado_inicial = "MIC SILENCIADO" if hud.pausada else "EM ESPERA"
-            hud.atualizar_estado(estado_inicial, hud.BORDER_PINK, "Diga 'Capri' ou digite um comando na barra abaixo.")
+            hud.atualizar_estado(
+                estado_inicial,
+                hud.BORDER_PINK,
+                "Diga 'Capri' ou digite um comando na barra abaixo.",
+            )
 
             while hud.rodando and not hud.reiniciar_ia:
                 if getattr(hud, "limpar_contexto", False):
@@ -172,9 +193,10 @@ def loop_cerebro_capri(hud: CapriHUD, estado: dict, lock: threading.Lock):
                         hud.atualizar_estado("VOZ DETECTADA", hud.ACCENT_LIME, f'Você: "{comando_embutido}"')
                         executar_comando_seguro(comando_embutido, hud, estado, lock, origem="VOZ")
 
-        except Exception as e:
+        except Exception:
             log.exception("Erro inesperado no loop principal")
             time.sleep(2)
+
 
 def iniciar_capri():
     """Inicializa os subsistemas, sobe as threads de controle e abre o HUD."""
@@ -196,6 +218,22 @@ def iniciar_capri():
 
     agente_reigns = AgenteReigns(app_hud, estado_compartilhado, lock_execucao, falar, memoria=memoria)
     estado_compartilhado["agente_reigns"] = agente_reigns
+
+    def _encerrar_subsistemas():
+        try:
+            agente_reigns.parar()
+        except Exception:
+            pass
+        try:
+            observador.parar()
+        except Exception:
+            pass
+        try:
+            memoria.fechar()
+        except Exception:
+            pass
+
+    app_hud.ao_encerrar = _encerrar_subsistemas
 
     thread_ia = threading.Thread(
         target=loop_cerebro_capri,

@@ -6,18 +6,21 @@ from datetime import datetime
 import requests
 
 from audio.voz import falar
-from audio.comandos import normalizar_frase
+from audio.comandos import normalizar_frase, remover_acentos
 from core.logger import obter_logger
-log = obter_logger("cerebro")  # ou "cerebro", "memoria", "modo_livre", "voz"
+
+log = obter_logger("cerebro")
 
 try:
     from ai.visao import analisar_tela_sob_demanda
-except ImportError:
+except Exception as e:
+    log.warning("Módulo de visão indisponível (ai.visao): %s", e)
     analisar_tela_sob_demanda = None
 
 try:
     from system import spotify as spotify_control
-except ImportError:
+except Exception as e:
+    log.warning("Módulo do Spotify indisponível (system.spotify): %s", e)
     spotify_control = None
 
 
@@ -37,16 +40,22 @@ SYSTEM_PROMPT_CODIGO = (
 )
 
 GATILHOS_PEDIDO_CODIGO = (
-    "codigo", "código", "crud", "python", "em c", "linguagem c", "html", "css",
-    "javascript", "dart", "flutter", "sql", "script", "algoritmo", "função",
+    "codigo", "crud", "python", "linguagem c", "html", "css",
+    "javascript", "dart", "flutter", "sql", "script", "algoritmo",
     "funcao", "classe", "sistema de", "programa em", "programa para",
-    "refatore", "corrija", "debug", "estrutura de dados", "api em"
+    "refatore", "corrija", "debug", "estrutura de dados", "api em",
 )
+
+_REGEX_PEDIDO_CODIGO = [
+    re.compile(rf"\b{re.escape(g)}\b") for g in GATILHOS_PEDIDO_CODIGO
+] + [
+    re.compile(r"\bem c\b"),
+]
 
 
 def _eh_pedido_de_codigo(comando: str) -> bool:
-    cmd_lower = comando.lower()
-    return any(g in cmd_lower for g in GATILHOS_PEDIDO_CODIGO)
+    cmd_limpo = remover_acentos((comando or "").lower())
+    return any(rx.search(cmd_limpo) for rx in _REGEX_PEDIDO_CODIGO)
 
 
 # =====================================================================
@@ -81,7 +90,7 @@ def obter_lista_modelos_rapidos(client) -> list[str]:
                 lista_final.append(modelo)
         return lista_final
     except Exception as e:
-        print(f"  [Aviso Lista Modelos Gemini]: {e}")
+        log.warning("Aviso ao listar modelos Gemini: %s", e)
         return list(preferidos)
 
 
@@ -109,14 +118,14 @@ def _consultar_gemini(client, modelos: list[str], prompt_completo: str, modo_cod
             )
             texto = (getattr(resp, "text", "") or "").strip()
             if texto:
-                print(f"  [Gemini OK -> {modelo} | modo={'CODIGO' if modo_codigo else 'CHAT'}]")
+                log.info("Gemini OK -> %s | modo=%s", modelo, "CODIGO" if modo_codigo else "CHAT")
                 return texto
         except Exception as e:
             ultimo_erro = str(e)
-            print(f"  [Aviso modelo {modelo}]: {e}")
+            log.warning("Aviso modelo %s: %s", modelo, e)
             continue
 
-    print(f"  [Erro Gemini geral]: {ultimo_erro}")
+    log.error("Erro Gemini geral: %s", ultimo_erro)
     return "Não consegui resposta da API do Gemini agora. Verifique sua chave ou conexão."
 
 
@@ -144,10 +153,10 @@ def _consultar_claude(api_key: str, historico: list[dict], comando: str, modo_co
         dados = resp.json()
         if resp.status_code == 200 and dados.get("content"):
             return dados["content"][0].get("text", "").strip()
-        print(f"  [Erro Claude {resp.status_code}]: {dados}")
+        log.warning("Erro Claude %s: %s", resp.status_code, dados)
         return "A API do Claude retornou um erro. Verifique sua chave em CONFIG."
     except Exception as e:
-        print(f"  [Erro conexão Claude]: {e}")
+        log.warning("Erro conexão Claude: %s", e)
         return "Falha de conexão com a API do Claude."
 
 
@@ -177,10 +186,10 @@ def _consultar_deepseek(api_key: str, historico: list[dict], comando: str, modo_
         dados = resp.json()
         if resp.status_code == 200 and dados.get("choices"):
             return dados["choices"][0]["message"].get("content", "").strip()
-        print(f"  [Erro DeepSeek {resp.status_code}]: {dados}")
+        log.warning("Erro DeepSeek %s: %s", resp.status_code, dados)
         return "A API do DeepSeek retornou um erro. Verifique sua chave em CONFIG."
     except Exception as e:
-        print(f"  [Erro conexão DeepSeek]: {e}")
+        log.warning("Erro conexão DeepSeek: %s", e)
         return "Falha de conexão com a API do DeepSeek."
 
 
@@ -239,18 +248,20 @@ def _pressionar_tecla_vk(vk_code: int, vezes: int = 1):
         ctypes.windll.user32.keybd_event(vk_code, 0, 2, 0)
 
 
-def _tentar_abrir_app(comando: str, hud) -> bool:
+def _tentar_abrir_app(cmd_limpo: str, hud) -> bool:
     gatilhos = ("abrir ", "abre ", "iniciar ", "inicia ", "executar ", "executa ", "rodar ", "roda ")
-    if not any(comando.startswith(g) or f" {g}" in comando for g in gatilhos):
+    if not any(cmd_limpo.startswith(g) or f" {g}" in cmd_limpo for g in gatilhos):
         return False
 
     apps = hud.config.get("apps", {})
     for chave, info in apps.items():
         if not info.get("ativo", True):
             continue
-        apelidos = [chave.lower()] + [a.lower() for a in info.get("apelidos", [])]
+        apelidos = [remover_acentos(chave.lower())] + [
+            remover_acentos(a.lower()) for a in info.get("apelidos", [])
+        ]
         for apelido in apelidos:
-            if apelido and re.search(rf"\b{re.escape(apelido)}\b", comando):
+            if apelido and re.search(rf"\b{re.escape(apelido)}\b", cmd_limpo):
                 caminho = info.get("caminho_abrir", "")
                 nome = info.get("nome", chave)
                 try:
@@ -258,24 +269,26 @@ def _tentar_abrir_app(comando: str, hud) -> bool:
                     falar(hud, f"Abrindo {nome}.")
                     return True
                 except Exception as e:
-                    print(f"  [Erro ao abrir {nome}]: {e}")
+                    log.warning("Erro ao abrir %s: %s", nome, e)
                     falar(hud, f"Não consegui abrir {nome}.")
                     return True
     return False
 
 
-def _tentar_fechar_app(comando: str, hud) -> bool:
+def _tentar_fechar_app(cmd_limpo: str, hud) -> bool:
     gatilhos = ("fechar ", "fecha ", "encerrar ", "encerra ", "matar ")
-    if not any(comando.startswith(g) or f" {g}" in comando for g in gatilhos):
+    if not any(cmd_limpo.startswith(g) or f" {g}" in cmd_limpo for g in gatilhos):
         return False
 
     apps = hud.config.get("apps", {})
     for chave, info in apps.items():
         if not info.get("ativo", True):
             continue
-        apelidos = [chave.lower()] + [a.lower() for a in info.get("apelidos", [])]
+        apelidos = [remover_acentos(chave.lower())] + [
+            remover_acentos(a.lower()) for a in info.get("apelidos", [])
+        ]
         for apelido in apelidos:
-            if apelido and re.search(rf"\b{re.escape(apelido)}\b", comando):
+            if apelido and re.search(rf"\b{re.escape(apelido)}\b", cmd_limpo):
                 exe = info.get("executavel", "")
                 nome = info.get("nome", chave)
                 if not exe:
@@ -291,42 +304,42 @@ def _tentar_fechar_app(comando: str, hud) -> bool:
                     falar(hud, f"{nome} encerrado.")
                     return True
                 except Exception as e:
-                    print(f"  [Erro ao fechar {nome}]: {e}")
+                    log.warning("Erro ao fechar %s: %s", nome, e)
                     falar(hud, f"Tive um problema para fechar {nome}.")
                     return True
     return False
 
 
-def _tentar_comando_midia_e_volume(comando: str, hud) -> bool:
-    if any(p in comando for p in ("pausar musica", "pausar música", "pausa a musica", "continuar musica", "tocar musica", "tocar música", "play musica")):
+def _tentar_comando_midia_e_volume(cmd_limpo: str, hud) -> bool:
+    if any(p in cmd_limpo for p in ("pausar musica", "pausa a musica", "continuar musica", "tocar musica", "play musica")):
         hud.atualizar_estado("SPOTIFY", "#A3E635", "Controlando reprodução de mídia...")
         _pressionar_tecla_vk(0xB3)
         falar(hud, "Prontinho.", usar_cache=True)
         return True
 
-    if any(p in comando for p in ("proxima musica", "próxima música", "pular musica", "passar musica")):
+    if any(p in cmd_limpo for p in ("proxima musica", "pular musica", "passar musica")):
         hud.atualizar_estado("SPOTIFY", "#A3E635", "Avançando faixa...")
         _pressionar_tecla_vk(0xB0)
         falar(hud, "Próxima faixa.", usar_cache=True)
         return True
 
-    if any(p in comando for p in ("musica anterior", "música anterior", "voltar musica")):
+    if any(p in cmd_limpo for p in ("musica anterior", "voltar musica")):
         hud.atualizar_estado("SPOTIFY", "#A3E635", "Voltando faixa...")
         _pressionar_tecla_vk(0xB1)
         falar(hud, "Voltando a música.", usar_cache=True)
         return True
 
-    if any(p in comando for p in ("aumentar volume", "aumenta o volume", "subir volume")):
+    if any(p in cmd_limpo for p in ("aumentar volume", "aumenta o volume", "subir volume")):
         _pressionar_tecla_vk(0xAF, vezes=5)
         falar(hud, "Volume aumentado.", usar_cache=True)
         return True
 
-    if any(p in comando for p in ("diminuir volume", "abaixar volume", "abaixa o volume", "baixar volume")):
+    if any(p in cmd_limpo for p in ("diminuir volume", "abaixar volume", "abaixa o volume", "baixar volume")):
         _pressionar_tecla_vk(0xAE, vezes=5)
         falar(hud, "Volume reduzido.", usar_cache=True)
         return True
 
-    if any(p in comando for p in ("mutar som", "mutar audio", "silenciar pc", "desmutar som")):
+    if any(p in cmd_limpo for p in ("mutar som", "mutar audio", "silenciar pc", "desmutar som")):
         _pressionar_tecla_vk(0xAD)
         falar(hud, "Áudio alternado.", usar_cache=True)
         return True
@@ -347,42 +360,74 @@ def processar_comando_usuario(
     observador=None,
     agente_reigns=None,
     memoria=None,
+    origem: str = "VOZ",
 ):
     cmd_original = (comando or "").strip()
     if not cmd_original:
         return
 
-    cmd = normalizar_frase(cmd_original).strip() or cmd_original.lower()
-    print(f"  [Cérebro Capri]: Processando '{cmd}'")
+    # Correções fonéticas (ex: 'valor a' -> 'valorant') só rodam em comandos de VOZ
+    if origem == "VOZ":
+        cmd = normalizar_frase(cmd_original).strip() or cmd_original.lower()
+    else:
+        cmd = re.sub(r"\s+", " ", cmd_original.lower()).strip()
+
+    # Versão sem acentos usada para comparar todos os gatilhos de forma confiável
+    cmd_limpo = remover_acentos(cmd)
+    log.info("Processando (%s): '%s'", origem, cmd_original)
 
     # 1. VISÃO DE TELA SOB DEMANDA
+    cmd_bruto_lower = cmd_original.lower()
     gatilhos_ver_tela = (
-        "olha minha tela", "olhe minha tela", "ve minha tela", "vê minha tela",
-        "o que tem na tela", "o que esta na tela", "o que está na tela",
-        "olha esse codigo", "olha esse código",
-        "completa esse codigo", "completa esse código",
-        "corrige esse codigo", "corrige esse código",
-        "le esse codigo", "lê esse código",
+        "olha minha tela", "olha a minha tela", "olhe minha tela", "olhe a minha tela",
+        "olha a tela", "olhe a tela", "ver a tela", "ver minha tela", "ve minha tela", "ve a tela",
+        "ler a tela", "ler minha tela", "le a tela", "le minha tela",
+        "o que tem na tela", "o que tem na minha tela",
+        "o que esta na tela", "o que esta na minha tela",
+        "o que voce ta vendo", "o que voce esta vendo",
+        "olha esse codigo", "olha o codigo", "completa esse codigo",
+        "corrige esse codigo", "le esse codigo", "ler esse codigo",
+        "analisa a tela", "analisa minha tela", "analise a tela", "analise minha tela",
     )
-    if any(g in cmd for g in gatilhos_ver_tela):
+
+    verbos_visao = (
+        "olha", "olhe", "olhar", "ver", "enxerg", "vendo",
+        "ler", "leia", "analis", "explic", "corrig", "complet",
+    )
+    # Exige referência explícita à tela/print na regra combinada para não interceptar pedidos comuns de código
+    alvos_visao = ("tela", "monitor", "print", "screenshot")
+    pediu_visao_combinada = (
+        any(v in cmd_limpo for v in verbos_visao)
+        and any(a in cmd_limpo for a in alvos_visao)
+        and "modo observador" not in cmd_limpo
+    )
+
+    forcar_tela = cmd_bruto_lower.startswith(("/tela", "[tela]", "/ver"))
+
+    if forcar_tela or any(g in cmd_limpo for g in gatilhos_ver_tela) or pediu_visao_combinada:
         if analisar_tela_sob_demanda is None:
             falar(hud, "O módulo de visão não foi encontrado na pasta src.")
             return
+        pedido_limpo = cmd_original
+        for prefixo in ("/tela", "[tela]", "/ver"):
+            if cmd_bruto_lower.startswith(prefixo):
+                pedido_limpo = cmd_original[len(prefixo):].strip() or "O que está aparecendo na tela?"
+                break
         hud.atualizar_estado("ANALISANDO TELA...", "#54F2F2", "Capturando tela com gemini-3.5-flash...")
-        resposta_visao = analisar_tela_sob_demanda(client, cmd_original)
+        resposta_visao = analisar_tela_sob_demanda(client, pedido_limpo)
         falar(hud, resposta_visao, usar_cache=False)
         return
 
     # 2. MODO OBSERVADOR / CO-PILOTO DE JOGOS
-    if any(p in cmd for p in ("ativar modo observador", "ligar modo observador", "assistir meu jogo", "olha eu jogar")):
+    if any(p in cmd_limpo for p in ("ativar modo observador", "ligar modo observador", "assistir meu jogo", "olha eu jogar")):
         if observador is not None:
             observador.iniciar()
             falar(hud, "Visão de co-piloto ativada. Pode mandar bala no jogo que tô de olho.")
         else:
-            falar(hud, "O modo observador ainda não foi conectado no capri_core.")
+            falar(hud, "O modo observador ainda não foi conectado no motor principal.")
         return
 
-    if any(p in cmd for p in ("desativar modo observador", "desligar modo observador", "para de olhar", "parar de assistir")):
+    if any(p in cmd_limpo for p in ("desativar modo observador", "desligar modo observador", "para de olhar", "parar de assistir")):
         if observador is not None:
             observador.parar()
             falar(hud, "Modo observador desligado. Economizando sensores.")
@@ -391,35 +436,35 @@ def processar_comando_usuario(
         return
 
     # 3. MODO LIVRE ("FUGA DA CAIXA")
-    if any(p in cmd for p in ("sair da caixa", "sai da caixa", "fuga da caixa", "modo livre", "anda na tela", "soltar capri")):
+    if any(p in cmd_limpo for p in ("sair da caixa", "sai da caixa", "fuga da caixa", "modo livre", "anda na tela", "soltar capri")):
         if hasattr(hud, "ativar_modo_livre"):
             hud.ativar_modo_livre()
             falar(hud, "Finalmente fora dessa jaula. Agora a área de trabalho é minha.")
         return
 
-    if any(p in cmd for p in ("voltar para a caixa", "voltar pra caixa", "volta pra caixa", "voltar pro hud", "modo hud")):
+    if any(p in cmd_limpo for p in ("voltar para a caixa", "voltar pra caixa", "volta pra caixa", "voltar pro hud", "modo hud")):
         if hasattr(hud, "desativar_modo_livre"):
             hud.desativar_modo_livre()
             falar(hud, "De volta pro terminal. HUD restaurado.")
         return
 
     # 4. MODO AUTÔNOMO: JOGAR REIGNS
-    if any(p in cmd for p in ("jogue reigns", "joga reigns", "jogar reigns", "controla o rei", "assume o trono")):
+    if any(p in cmd_limpo for p in ("jogue reigns", "joga reigns", "jogar reigns", "controla o rei", "assume o trono")):
         if agente_reigns is not None:
             falar(hud, "Deixa o trono comigo. Foca a janela do Reigns e segura ESC se quiser parar.")
             agente_reigns.iniciar()
         else:
-            falar(hud, "O módulo do Reigns ainda não foi conectado no capri_core.")
+            falar(hud, "O módulo do Reigns ainda não foi conectado no motor principal.")
         return
 
-    if any(p in cmd for p in ("parar reigns", "para reigns", "para de jogar", "parar de jogar", "sair do reigns")):
+    if any(p in cmd_limpo for p in ("parar reigns", "para reigns", "para de jogar", "parar de jogar", "sair do reigns")):
         if agente_reigns is not None:
             agente_reigns.parar()
             falar(hud, "Trono devolvido. Mãos fora do mouse.")
         return
 
     # 5. CONSULTAR OU LIMPAR MEMÓRIAS
-    if any(p in cmd for p in ("o que voce lembra", "o que você lembra", "minhas memorias", "eventos salvos")):
+    if any(p in cmd_limpo for p in ("o que voce lembra", "minhas memorias", "eventos salvos")):
         if memoria:
             evs = memoria.listar_eventos_ativos()
             if evs:
@@ -428,44 +473,43 @@ def processar_comando_usuario(
                 falar(hud, "Ainda não tenho nenhum evento ou teste agendado na minha memória dos últimos 20 dias.")
         return
 
-    if any(p in cmd for p in ("esquecer reigns", "limpar memoria do reigns", "resetar reigns")):
+    if any(p in cmd_limpo for p in ("esquecer reigns", "limpar memoria do reigns", "resetar reigns")):
         if memoria:
             memoria.limpar_memoria_reigns()
             falar(hud, "Memória de runs do Reigns zerada. Começando do zero.")
         return
 
     # 6. HORAS E DATA
-    if any(p in cmd for p in ("que horas sao", "que horas são", "me diz as horas", "horas")):
-        if len(cmd.split()) <= 5:
-            agora = datetime.now()
-            falar(hud, f"Agora são {agora.hour} horas e {agora.minute:02d} minutos.", usar_cache=False)
-            return
+    if any(p in cmd_limpo for p in ("que horas sao", "que hora e", "qual a hora", "qual e a hora", "me diz as horas", "me ve as horas", "fala as horas")):
+        agora = datetime.now()
+        falar(hud, f"Agora são {agora.hour} horas e {agora.minute:02d} minutos.", usar_cache=False)
+        return
 
-    if any(p in cmd for p in ("que dia e hoje", "que dia é hoje", "qual a data")):
+    if any(p in cmd_limpo for p in ("que dia e hoje", "qual a data", "qual e a data")):
         agora = datetime.now()
         falar(hud, f"Hoje é dia {agora.day} do {agora.month} de {agora.year}.", usar_cache=False)
         return
 
     # 7. SPOTIFY POR NOME DE MÚSICA
-    if spotify_control and any(cmd.startswith(v) for v in ("toca ", "tocar ", "coloca ", "bota ")) and "musica" not in cmd and "música" not in cmd:
-        fn_tocar = getattr(spotify_control, "tocar_musica_spotify", None) or getattr(spotify_control, "tocar_musica", None)
-        if callable(fn_tocar):
+    if spotify_control:
+        pediu_musica, nome_musica = spotify_control.detectar_pedido_musica(cmd_original)
+        if pediu_musica and nome_musica:
             try:
-                hud.atualizar_estado("SPOTIFY", "#A3E635", f"Buscando: {cmd_original}")
-                fn_tocar(cmd_original)
-                falar(hud, "Colocando pra tocar no Spotify.")
+                hud.atualizar_estado("SPOTIFY", "#A3E635", f"Buscando: {nome_musica}")
+                msg_sp = spotify_control.tocar_musica_spotify(nome_musica)
+                falar(hud, msg_sp, usar_cache=False)
                 return
             except Exception as e:
-                print(f"  [Aviso Spotify Control]: {e}")
+                log.warning("Aviso Spotify Control: %s", e)
 
     # 8. CONTROLES LOCAIS
-    if _tentar_comando_midia_e_volume(cmd, hud):
+    if _tentar_comando_midia_e_volume(cmd_limpo, hud):
         return
 
-    if _tentar_abrir_app(cmd, hud):
+    if _tentar_abrir_app(cmd_limpo, hud):
         return
 
-    if _tentar_fechar_app(cmd, hud):
+    if _tentar_fechar_app(cmd_limpo, hud):
         return
 
     # 9. CONVERSA E PESQUISA MULTI-IA COM MEMÓRIA DE 20 DIAS

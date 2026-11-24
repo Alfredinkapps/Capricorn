@@ -4,16 +4,21 @@ import json
 import time
 import ctypes
 import threading
+from typing import Any
+
 import mss
 import pygame
 import pyautogui
 from pytweening import easeOutQuad, easeInOutQuad
 from PIL import Image
 from google.genai import types
+
 from core.logger import obter_logger
-log = obter_logger("reigns")  # ou "cerebro", "memoria", "modo_livre", "voz"
+
+log = obter_logger("reigns")
 
 MODELO_REIGNS = "gemini-3.5-flash"
+MODELOS_REIGNS_FALLBACK = ["gemini-3.5-flash", "gemini-3.5-flash-lite"]
 
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.04
@@ -32,11 +37,12 @@ def _limpar_json_bruto(texto: str) -> str:
     return txt.strip()
 
 
-def _capturar_tela_reigns(largura_max: int = 1024, qualidade: int = 80) -> tuple[bytes, int, int]:
+def _capturar_tela_reigns(largura_max: int = 1024, qualidade: int = 75) -> tuple[bytes, int, int]:
     """Captura o monitor principal em RAM e retorna (jpeg_bytes, largura_real, altura_real)."""
     with mss.mss() as sct:
-        mon = sct.monitors[1]
-        larg_real, alt_real = mon["width"], mon["height"]
+        indice = 1 if len(sct.monitors) > 1 else 0
+        mon = sct.monitors[indice]
+        larg_real, alt_real = int(mon["width"]), int(mon["height"])
         raw = sct.grab(mon)
         img = Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
 
@@ -52,7 +58,14 @@ def _capturar_tela_reigns(largura_max: int = 1024, qualidade: int = 80) -> tuple
 class AgenteReigns:
     """Agente visual autônomo para a Capri jogar Reigns aprendendo a cada reinado."""
 
-    def __init__(self, hud, estado_compartilhado: dict, lock: threading.Lock, funcao_falar, memoria=None):
+    def __init__(
+        self,
+        hud: Any,
+        estado_compartilhado: dict[str, Any],
+        lock: threading.Lock,
+        funcao_falar: Any,
+        memoria: Any = None,
+    ):
         self.hud = hud
         self.estado = estado_compartilhado
         self.lock = lock
@@ -60,14 +73,15 @@ class AgenteReigns:
         self.memoria = memoria
 
         self.ativo = False
-        self.thread = None
+        self.thread: threading.Thread | None = None
         self.intervalo_segundos = 3.0
         self.turnos_jogados = 0
         self.run_id = 1
         self.morte_registrada_na_run = False
-        self.historico_turnos = []
+        self.historico_turnos: list[str] = []
+        self._alvo_janela: tuple[int, int, int, int] | None = None
 
-    def iniciar(self):
+    def iniciar(self) -> None:
         if self.ativo:
             return
         self.ativo = True
@@ -77,9 +91,12 @@ class AgenteReigns:
         self.run_id = self.memoria.iniciar_nova_run_reigns() if self.memoria else 1
         self.thread = threading.Thread(target=self._loop_jogo, daemon=True)
         self.thread.start()
-        print(f"  [Agente Reigns]: ATIVADO (Run #{self.run_id})! Segure ESC ou mova o mouse pro canto (0,0) para parar.")
+        log.info(
+            "Agente Reigns ATIVADO (Run #%d). Segure ESC ou mova o mouse para (0,0) para parar.",
+            self.run_id,
+        )
 
-    def parar(self):
+    def parar(self) -> None:
         if not self.ativo:
             return
         self.ativo = False
@@ -87,15 +104,19 @@ class AgenteReigns:
             pyautogui.mouseUp(button="left")
         except Exception:
             pass
-        print("  [Agente Reigns]: DESATIVADO.")
+        log.info("Agente Reigns DESATIVADO.")
 
-    def _falar_assincrono(self, texto: str):
+    def _falar_assincrono(
+        self, texto: str, run_id: int | None = None, turno: int | None = None
+    ) -> None:
         if not texto:
             return
+        r_id = self.run_id if run_id is None else run_id
+        t_num = self.turnos_jogados if turno is None else turno
         if hasattr(self.hud, "mostrar_balao_fala"):
-            self.hud.mostrar_balao_fala(f"[REIGNS // Run #{self.run_id} - Turno {self.turnos_jogados}]\n{texto}")
+            self.hud.mostrar_balao_fala(f"[REIGNS // Run #{r_id} - Turno {t_num}]\n{texto}")
 
-        def _falar_thread():
+        def _falar_thread() -> None:
             try:
                 if pygame.mixer.music.get_busy():
                     return
@@ -124,14 +145,14 @@ class AgenteReigns:
         rect = _RECT()
 
         if hwnd and ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect)):
-            larg_j = rect.right - rect.left
-            alt_j = rect.bottom - rect.top
+            larg_j = int(rect.right - rect.left)
+            alt_j = int(rect.bottom - rect.top)
             if larg_j >= 400 and alt_j >= 300:
-                cx = rect.left + (larg_j // 2)
-                cy = rect.top + int(alt_j * 0.56)
+                cx = int(rect.left) + (larg_j // 2)
+                cy = int(rect.top) + int(alt_j * 0.56)
                 return cx, cy, larg_j, alt_j
 
-        return larg_mon // 2, int(alt_mon * 0.56), larg_mon, alt_mon
+        return int(larg_mon) // 2, int(alt_mon * 0.56), int(larg_mon), int(alt_mon)
 
     def _espiar_opcoes(self) -> tuple[bytes, bytes, int, int]:
         """
@@ -149,7 +170,7 @@ class AgenteReigns:
             pyautogui.mouseDown(button="left")
             time.sleep(0.12)
 
-            # 1. Espia ESQUERDA (movimento mais suave para o Unity registrar o drag)
+            # 1. Espia ESQUERDA
             pyautogui.moveTo(cx - offset_espiar, cy, duration=0.30, tween=easeOutQuad)
             time.sleep(0.35)
             img_esq, _, _ = _capturar_tela_reigns()
@@ -167,14 +188,13 @@ class AgenteReigns:
 
         return img_esq, img_dir, larg_j, alt_j
 
-    def _executar_jogada(self, escolha: str, larg: int, alt: int):
+    def _executar_jogada(self, escolha: str, larg: int, alt: int) -> None:
         """Executa o swipe completo na direção decidida pelo Gemini."""
         if escolha == "ESPERAR":
             return
 
-        alvo = getattr(self, "_alvo_janela", None)
-        if alvo:
-            cx, cy, larg_j, _ = alvo
+        if self._alvo_janela is not None:
+            cx, cy, larg_j, _ = self._alvo_janela
         else:
             cx, cy, larg_j, _ = self._obter_area_janela_ativa()
 
@@ -196,8 +216,8 @@ class AgenteReigns:
             pyautogui.mouseUp(button="left")
 
         pyautogui.moveTo(cx, cy, duration=0.10)
-        
-    def _decidir_com_gemini(self, client, img_esq: bytes, img_dir: bytes) -> dict:
+
+    def _decidir_com_gemini(self, client: Any, img_esq: bytes, img_dir: bytes) -> dict[str, Any]:
         p_esq = types.Part.from_bytes(data=img_esq, mime_type="image/jpeg")
         p_dir = types.Part.from_bytes(data=img_dir, mime_type="image/jpeg")
 
@@ -234,18 +254,32 @@ class AgenteReigns:
             "}"
         )
 
-        resp = client.models.generate_content(
-            model=MODELO_REIGNS,
-            contents=[prompt, p_esq, p_dir],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.3,
-            ),
-        )
-        return json.loads(_limpar_json_bruto(resp.text or "{}"))
+        ultimo_erro: Exception | None = None
+        for modelo in MODELOS_REIGNS_FALLBACK:
+            try:
+                resp = client.models.generate_content(
+                    model=modelo,
+                    contents=[prompt, p_esq, p_dir],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.3,
+                    ),
+                )
+                dados = json.loads(_limpar_json_bruto(getattr(resp, "text", "") or "{}"))
+                if isinstance(dados, dict) and dados:
+                    return dados
+            except Exception as e:
+                ultimo_erro = e
+                log.warning("Falha na decisão do Reigns (%s): %s", modelo, e)
 
-    def _loop_jogo(self):
-        self.hud.atualizar_estado("REIGNS // PRONTO", "#A3E635", "Foque a janela do Reigns... começando em 3s!")
+        if ultimo_erro is not None:
+            raise ultimo_erro
+        return {}
+
+    def _loop_jogo(self) -> None:
+        self.hud.atualizar_estado(
+            "REIGNS // PRONTO", "#A3E635", "Foque a janela do Reigns... começando em 3s!"
+        )
         for _ in range(30):
             if not self.ativo or not self.hud.rodando or _esc_pressionado():
                 self.parar()
@@ -261,7 +295,9 @@ class AgenteReigns:
 
             client = self.estado.get("client")
             if not client:
-                self.hud.atualizar_estado("ERRO", "#FF0055", "Configure a chave do Gemini antes de jogar.")
+                self.hud.atualizar_estado(
+                    "ERRO", "#FF0055", "Configure a chave do Gemini antes de jogar."
+                )
                 self.parar()
                 break
 
@@ -272,7 +308,9 @@ class AgenteReigns:
                 if not self.ativo or _esc_pressionado():
                     continue
 
-                self.hud.atualizar_estado("REIGNS // PENSANDO", "#9B72FF", "Calculando equilíbrio dos 4 pilares...")
+                self.hud.atualizar_estado(
+                    "REIGNS // PENSANDO", "#9B72FF", "Calculando equilíbrio dos 4 pilares..."
+                )
                 decisao = self._decidir_com_gemini(client, img_esq, img_dir)
 
                 escolha = str(decisao.get("escolha", "ESPERAR")).upper().strip()
@@ -283,45 +321,62 @@ class AgenteReigns:
                 morreu = bool(decisao.get("morreu", False))
                 comentario = str(decisao.get("comentario", "")).strip()
                 motivo = str(decisao.get("motivo_curto", "")).strip()
-                barras = decisao.get("barras", {})
+                barras_brutas = decisao.get("barras", {})
+                barras: dict[str, Any] = barras_brutas if isinstance(barras_brutas, dict) else {}
+
+                # Preserva os números reais da run/turno antes de avançar para a próxima run na morte
+                run_log = self.run_id
+                turno_log = self.turnos_jogados
 
                 if morreu and not self.morte_registrada_na_run:
                     self.morte_registrada_na_run = True
                     if self.memoria and self.turnos_jogados > 0:
                         self.memoria.aprender_com_morte_reigns_async(
-                            client, self.run_id, self.turnos_jogados, causa_morte=motivo or carta
+                            client,
+                            self.run_id,
+                            self.turnos_jogados,
+                            causa_morte=motivo or carta,
                         )
                         self.run_id = max(self.run_id + 1, self.memoria.iniciar_nova_run_reigns())
                         self.turnos_jogados = 0
                 elif escolha in ("ESQUERDA", "DIREITA"):
                     self.morte_registrada_na_run = False
                     self.turnos_jogados += 1
+                    turno_log = self.turnos_jogados
                     if self.memoria:
                         self.memoria.registrar_jogada_reigns(
                             self.run_id, self.turnos_jogados, carta, escolha, barras, motivo
                         )
 
-                resumo = f"Run #{self.run_id} T{self.turnos_jogados}: {escolha} | {carta} | Barras={barras} | {motivo}"
+                sufixo_morte = " [MORTE]" if morreu else ""
+                resumo = (
+                    f"Run #{run_log} T{turno_log}{sufixo_morte}: "
+                    f"{escolha} | {carta} | Barras={barras} | {motivo}"
+                )
                 self.historico_turnos.append(resumo)
                 if len(self.historico_turnos) > 10:
                     del self.historico_turnos[:-10]
 
-                print(f"  [Reigns] {resumo}")
+                log.info("[Reigns] %s", resumo)
 
                 if escolha != "ESPERAR":
-                    self.hud.atualizar_estado(f"REIGNS // {escolha}", "#A3E635", motivo or f"Escolhendo {escolha}...")
+                    self.hud.atualizar_estado(
+                        f"REIGNS // {escolha}", "#A3E635", motivo or f"Escolhendo {escolha}..."
+                    )
                     self._executar_jogada(escolha, larg, alt)
 
                 if comentario:
-                    self._falar_assincrono(comentario)
+                    self._falar_assincrono(comentario, run_id=run_log, turno=turno_log)
 
             except pyautogui.FailSafeException:
-                print("  [Agente Reigns]: FailSafe acionado (mouse no canto superior esquerdo).")
+                log.info("Agente Reigns: FailSafe acionado (mouse no canto superior esquerdo).")
                 self.parar()
-                self.hud.atualizar_estado("EM ESPERA", self.hud.BORDER_PINK, "Reigns encerrado pelo FailSafe.")
+                self.hud.atualizar_estado(
+                    "EM ESPERA", self.hud.BORDER_PINK, "Reigns encerrado pelo FailSafe."
+                )
                 break
             except Exception as e:
-                print(f"  [Aviso Agente Reigns]: {e}")
+                log.warning("Aviso Agente Reigns: %s", e)
                 time.sleep(2.0)
 
             passos = int(self.intervalo_segundos * 10)

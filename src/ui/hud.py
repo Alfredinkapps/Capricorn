@@ -1764,6 +1764,7 @@ class CapriHUD:
             "deepseek_api_key": tk.StringVar(value=str(self.config.get("deepseek_api_key", ""))),
             "fish_api_key": tk.StringVar(value=str(self.config.get("fish_api_key", ""))),
             "fish_voice_id": tk.StringVar(value=str(self.config.get("fish_voice_id", ""))),
+            "spotify_client_id": tk.StringVar(value=str(self.config.get("spotify_client_id", ""))),
             "pose_padrao": tk.StringVar(value=str(self.config.get("pose_padrao", "Padrao"))),
         }
 
@@ -1904,6 +1905,7 @@ class CapriHUD:
                 _criar_linha_input("DeepSeek API Key", vars_chaves["deepseek_api_key"], ocultar=True)
                 _criar_linha_input("Fish Audio API Key", vars_chaves["fish_api_key"], ocultar=True)
                 _criar_linha_input("Fish Audio Voice ID", vars_chaves["fish_voice_id"], ocultar=False)
+                _criar_linha_input("Spotify Client ID (Opcional)", vars_chaves["spotify_client_id"], ocultar=False)
 
                 criar_divisor_secao(col_direita, "Configuração de Módulos (Clique para alternar IA)")
                 opcoes_ia = ["Gemini", "Claude", "DeepSeek"]
@@ -2058,6 +2060,120 @@ class CapriHUD:
                 b_pe.bind("<Button-1>", lambda _e: _mudar_pose(-1))
                 l_pv.bind("<Button-1>", lambda _e: _mudar_pose(1))
                 b_pd.bind("<Button-1>", lambda _e: _mudar_pose(1))
+
+                criar_divisor_secao(col_direita, "Visão de Tela & Monitor")
+
+                try:
+                    from ai.visao import listar_monitores
+                    monitores = listar_monitores()
+                except Exception:
+                    monitores = [{"indice": 1, "rotulo": "Monitor 1 (Padrão)"}]
+
+                mon_salvo = int(self.config.get("monitor_visao", 1) or 1)
+                idx_mon_atual = next(
+                    (i for i, m in enumerate(monitores) if int(m["indice"]) == mon_salvo),
+                    0,
+                )
+                estado_mon = [idx_mon_atual]
+                var_monitor = tk.StringVar(value=str(monitores[idx_mon_atual]["rotulo"]))
+
+                f_mon = tk.Frame(col_direita, bg=BG_MAIN, pady=6)
+                f_mon.pack(fill="x")
+                tk.Label(
+                    f_mon,
+                    text="Monitor da Visão / Co-Piloto",
+                    fg=CORAL,
+                    bg=BG_MAIN,
+                    font=("Consolas", 10, "bold"),
+                ).pack(side="left")
+                box_mon = tk.Frame(f_mon, bg=CORAL_DIM, padx=1, pady=1)
+                box_mon.pack(side="right")
+                inner_mon = tk.Frame(box_mon, bg=BG_INPUT, width=240, height=26, cursor="hand2")
+                inner_mon.pack_propagate(False)
+                inner_mon.pack()
+
+                def _mudar_monitor(delta: int) -> None:
+                    estado_mon[0] = (estado_mon[0] + delta) % len(monitores)
+                    escolhido = monitores[estado_mon[0]]
+                    var_monitor.set(str(escolhido["rotulo"]))
+                    self.config["monitor_visao"] = int(escolhido["indice"])
+                    salvar_configuracoes(self.config)
+
+                b_me = tk.Label(
+                    inner_mon, text="<", fg=CYAN, bg=BG_INPUT, font=("Consolas", 10, "bold"), cursor="hand2"
+                )
+                b_me.pack(side="left", padx=10)
+                l_mv = tk.Label(
+                    inner_mon,
+                    textvariable=var_monitor,
+                    fg=CYAN,
+                    bg=BG_INPUT,
+                    font=("Consolas", 10, "bold"),
+                    cursor="hand2",
+                )
+                l_mv.pack(expand=True)
+                b_md = tk.Label(
+                    inner_mon, text=">", fg=CYAN, bg=BG_INPUT, font=("Consolas", 10, "bold"), cursor="hand2"
+                )
+                b_md.pack(side="right", padx=10)
+
+                b_me.bind("<Button-1>", lambda _e: _mudar_monitor(-1))
+                l_mv.bind("<Button-1>", lambda _e: _mudar_monitor(1))
+                b_md.bind("<Button-1>", lambda _e: _mudar_monitor(1))
+
+                modos_visao: list[tuple[str, str]] = [
+                    ("auto", "Automático (Inteligente)"),
+                    ("janela_ativa", "Janela Ativa (Nitidez)"),
+                    ("monitor_inteiro", "Monitor Inteiro"),
+                ]
+                modo_salvo = str(self.config.get("modo_captura_visao", "auto") or "auto")
+                idx_modo_atual = next((i for i, (k, _) in enumerate(modos_visao) if k == modo_salvo), 0)
+                estado_modo = [idx_modo_atual]
+                var_modo_visao = tk.StringVar(value=modos_visao[idx_modo_atual][1])
+
+                f_mv = tk.Frame(col_direita, bg=BG_MAIN, pady=6)
+                f_mv.pack(fill="x")
+                tk.Label(
+                    f_mv,
+                    text="Recorte de Captura da Tela",
+                    fg=CORAL,
+                    bg=BG_MAIN,
+                    font=("Consolas", 10, "bold"),
+                ).pack(side="left")
+                box_mv = tk.Frame(f_mv, bg=CORAL_DIM, padx=1, pady=1)
+                box_mv.pack(side="right")
+                inner_mv = tk.Frame(box_mv, bg=BG_INPUT, width=240, height=26, cursor="hand2")
+                inner_mv.pack_propagate(False)
+                inner_mv.pack()
+
+                def _mudar_modo_visao(delta: int) -> None:
+                    estado_modo[0] = (estado_modo[0] + delta) % len(modos_visao)
+                    chave_modo, rotulo_modo = modos_visao[estado_modo[0]]
+                    var_modo_visao.set(rotulo_modo)
+                    self.config["modo_captura_visao"] = chave_modo
+                    salvar_configuracoes(self.config)
+
+                b_ve = tk.Label(
+                    inner_mv, text="<", fg=CYAN, bg=BG_INPUT, font=("Consolas", 10, "bold"), cursor="hand2"
+                )
+                b_ve.pack(side="left", padx=10)
+                l_vv = tk.Label(
+                    inner_mv,
+                    textvariable=var_modo_visao,
+                    fg=CYAN,
+                    bg=BG_INPUT,
+                    font=("Consolas", 10, "bold"),
+                    cursor="hand2",
+                )
+                l_vv.pack(expand=True)
+                b_vd = tk.Label(
+                    inner_mv, text=">", fg=CYAN, bg=BG_INPUT, font=("Consolas", 10, "bold"), cursor="hand2"
+                )
+                b_vd.pack(side="right", padx=10)
+
+                b_ve.bind("<Button-1>", lambda _e: _mudar_modo_visao(-1))
+                l_vv.bind("<Button-1>", lambda _e: _mudar_modo_visao(1))
+                b_vd.bind("<Button-1>", lambda _e: _mudar_modo_visao(1))
 
         rodape = tk.Frame(win, bg=BG_MAIN, pady=12)
         rodape.pack(fill="x", padx=28, side="bottom")

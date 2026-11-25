@@ -3,7 +3,9 @@ import re
 import ctypes
 import subprocess
 from datetime import datetime
+from typing import Any
 import requests
+from google.genai import types
 
 from audio.voz import falar
 from audio.comandos import normalizar_frase, remover_acentos
@@ -18,6 +20,12 @@ except Exception as e:
     analisar_tela_sob_demanda = None
 
 try:
+    from ai.ferramentas import criar_ferramentas_capri
+except Exception as e:
+    log.warning("Módulo de ferramentas indisponível (ai.ferramentas): %s", e)
+    criar_ferramentas_capri = None
+
+try:
     from system import spotify as spotify_control
 except Exception as e:
     log.warning("Módulo do Spotify indisponível (system.spotify): %s", e)
@@ -29,7 +37,10 @@ SYSTEM_PROMPT_CAPRI = (
     "direta, inteligente e parceira. Responda sempre em português do Brasil, "
     "de forma natural e concisa (1 a 3 frases curtas), pois sua resposta será "
     "exibida em um HUD compacto e falada em voz alta. Use suas memórias dos últimos 20 dias "
-    "de forma natural quando forem relevantes, sem ficar anunciando 'segundo meu banco de dados'."
+    "de forma natural quando forem relevantes, sem ficar anunciando 'segundo meu banco de dados'. "
+    "Quando o usuário pedir ações no PC (abrir/fechar programas, música no Spotify, volume, "
+    "analisar a tela, salvar lembrete ou alternar modos), use as ferramentas disponíveis — "
+    "você pode chamar várias ferramentas na mesma resposta para comandos compostos."
 )
 
 SYSTEM_PROMPT_CODIGO = (
@@ -52,16 +63,38 @@ _REGEX_PEDIDO_CODIGO = [
     re.compile(r"\bem c\b"),
 ]
 
+_REGEX_CONECTOR_COMPOSTO = re.compile(r"(?:\s+e\s+|,\s*|\s+depois\s+|\s+tambem\s+)")
+_VERBOS_ACAO_COMPOSTA = (
+    "abre", "abrir", "inicia", "iniciar", "executa", "executar",
+    "fecha", "fechar", "encerra", "encerrar", "mata", "matar",
+    "toca", "tocar", "bota", "botar", "coloca", "colocar",
+    "pausa", "pausar", "pula", "pular", "aumenta", "aumentar",
+    "diminui", "diminuir", "abaixa", "abaixar", "muta", "mutar",
+    "olha", "olhar", "analisa", "analisar", "lembra", "lembrar",
+    "salva", "salvar", "ativa", "ativar", "desativa", "desativar",
+    "joga", "jogue", "jogar", "solta", "soltar",
+)
+_REGEX_VERBOS_ACAO = re.compile(
+    r"\b(?:" + "|".join(re.escape(v) for v in _VERBOS_ACAO_COMPOSTA) + r")\b"
+)
+
 
 def _eh_pedido_de_codigo(comando: str) -> bool:
     cmd_limpo = remover_acentos((comando or "").lower())
     return any(rx.search(cmd_limpo) for rx in _REGEX_PEDIDO_CODIGO)
 
 
+def _eh_comando_composto(cmd_limpo: str) -> bool:
+    """Detecta pedidos com 2+ ações na mesma frase para delegar ao Function Calling do Gemini."""
+    if not _REGEX_CONECTOR_COMPOSTO.search(cmd_limpo):
+        return False
+    return len(_REGEX_VERBOS_ACAO.findall(cmd_limpo)) >= 2
+
+
 # =====================================================================
-# 1. LISTA DE MODELOS E CONSULTA MULTI-IA (GEMINI / CLAUDE / DEEPSEEK)
+# 1. LISTA DE MODELOS E CONSULTA MULTI-IA (GEMINI + TOOLS / CLAUDE / DEEPSEEK)
 # =====================================================================
-def obter_lista_modelos_rapidos(client) -> list[str]:
+def obter_lista_modelos_rapidos(client: Any) -> list[str]:
     """Retorna os modelos rápidos priorizando gemini-3.5-flash-lite."""
     preferidos = [
         "gemini-3.5-flash-lite",
@@ -94,7 +127,14 @@ def obter_lista_modelos_rapidos(client) -> list[str]:
         return list(preferidos)
 
 
-def _consultar_gemini(client, modelos: list[str], prompt_completo: str, modo_codigo: bool = False) -> str:
+def _consultar_gemini(
+    client: Any,
+    modelos: list[str],
+    prompt_completo: str,
+    modo_codigo: bool = False,
+    ferramentas: list[Any] | None = None,
+    system_instruction: str = "",
+) -> str:
     if client is None:
         return "Sua chave de API do Gemini não está configurada. Abra o botão CONFIG para adicionar."
 
@@ -109,27 +149,73 @@ def _consultar_gemini(client, modelos: list[str], prompt_completo: str, modo_cod
     else:
         lista_testar = base
 
+    usar_tools = bool(ferramentas)
+    config_tools: types.GenerateContentConfig | None = None
+    if usar_tools:
+        config_tools = types.GenerateContentConfig(
+            system_instruction=system_instruction or SYSTEM_PROMPT_CAPRI,
+            tools=ferramentas,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                disable=False,
+                maximum_remote_calls=4,
+            ),
+        )
+
     ultimo_erro = ""
     for modelo in lista_testar:
         try:
-            resp = client.models.generate_content(
-                model=modelo,
-                contents=prompt_completo,
-            )
+            if config_tools is not None:
+                resp = client.models.generate_content(
+                    model=modelo,
+                    contents=prompt_completo,
+                    config=config_tools,
+                )
+            else:
+                resp = client.models.generate_content(
+                    model=modelo,
+                    contents=prompt_completo,
+                )
             texto = (getattr(resp, "text", "") or "").strip()
             if texto:
-                log.info("Gemini OK -> %s | modo=%s", modelo, "CODIGO" if modo_codigo else "CHAT")
+                log.info(
+                    "Gemini OK -> %s | modo=%s | tools=%s",
+                    modelo,
+                    "CODIGO" if modo_codigo else "CHAT",
+                    "ON" if usar_tools else "OFF",
+                )
                 return texto
         except Exception as e:
             ultimo_erro = str(e)
-            log.warning("Aviso modelo %s: %s", modelo, e)
+            log.warning("Aviso modelo %s (tools=%s): %s", modelo, usar_tools, e)
             continue
+
+    # Fallback sem tools caso algum modelo tenha recusado Function Calling
+    if usar_tools:
+        log.info("Tentando fallback do Gemini em modo texto simples (sem tools)...")
+        prompt_fallback = f"{system_instruction or SYSTEM_PROMPT_CAPRI}\n\n{prompt_completo}"
+        for modelo in lista_testar:
+            try:
+                resp = client.models.generate_content(
+                    model=modelo,
+                    contents=prompt_fallback,
+                )
+                texto = (getattr(resp, "text", "") or "").strip()
+                if texto:
+                    return texto
+            except Exception as e:
+                ultimo_erro = str(e)
+                continue
 
     log.error("Erro Gemini geral: %s", ultimo_erro)
     return "Não consegui resposta da API do Gemini agora. Verifique sua chave ou conexão."
 
 
-def _consultar_claude(api_key: str, historico: list[dict], comando: str, modo_codigo: bool = False) -> str:
+def _consultar_claude(
+    api_key: str,
+    historico: list[dict[str, str]],
+    comando: str,
+    modo_codigo: bool = False,
+) -> str:
     if not api_key:
         return "Configure sua chave da API do Claude em CONFIG antes de pesquisar."
 
@@ -152,7 +238,7 @@ def _consultar_claude(api_key: str, historico: list[dict], comando: str, modo_co
         )
         dados = resp.json()
         if resp.status_code == 200 and dados.get("content"):
-            return dados["content"][0].get("text", "").strip()
+            return str(dados["content"][0].get("text", "")).strip()
         log.warning("Erro Claude %s: %s", resp.status_code, dados)
         return "A API do Claude retornou um erro. Verifique sua chave em CONFIG."
     except Exception as e:
@@ -160,7 +246,12 @@ def _consultar_claude(api_key: str, historico: list[dict], comando: str, modo_co
         return "Falha de conexão com a API do Claude."
 
 
-def _consultar_deepseek(api_key: str, historico: list[dict], comando: str, modo_codigo: bool = False) -> str:
+def _consultar_deepseek(
+    api_key: str,
+    historico: list[dict[str, str]],
+    comando: str,
+    modo_codigo: bool = False,
+) -> str:
     if not api_key:
         return "Configure sua chave da API do DeepSeek em CONFIG antes de pesquisar."
 
@@ -185,7 +276,7 @@ def _consultar_deepseek(api_key: str, historico: list[dict], comando: str, modo_
         )
         dados = resp.json()
         if resp.status_code == 200 and dados.get("choices"):
-            return dados["choices"][0]["message"].get("content", "").strip()
+            return str(dados["choices"][0]["message"].get("content", "")).strip()
         log.warning("Erro DeepSeek %s: %s", resp.status_code, dados)
         return "A API do DeepSeek retornou um erro. Verifique sua chave em CONFIG."
     except Exception as e:
@@ -193,9 +284,20 @@ def _consultar_deepseek(api_key: str, historico: list[dict], comando: str, modo_
         return "Falha de conexão com a API do DeepSeek."
 
 
-def consultar_ia(comando: str, hud, client, modelos: list[str], historico_conversa: list, memoria=None) -> str:
-    provedor = hud.config.get("provedor_ia", "Gemini").strip().lower()
-    modo_codigo = _eh_pedido_de_codigo(comando)
+def consultar_ia(
+    comando: str,
+    hud: Any,
+    client: Any,
+    modelos: list[str],
+    historico_conversa: list[dict[str, str]],
+    memoria: Any = None,
+    observador: Any = None,
+    agente_reigns: Any = None,
+    permitir_ferramentas: bool = True,
+    forcar_ferramentas: bool = False,
+) -> str:
+    provedor = str(hud.config.get("provedor_ia", "Gemini")).strip().lower()
+    modo_codigo = _eh_pedido_de_codigo(comando) and not forcar_ferramentas
 
     rotulo_status = "GERANDO CÓDIGO..." if modo_codigo else "PESQUISANDO IA..."
     hud.atualizar_estado(rotulo_status, "#54F2F2", f"Consultando {provedor.upper()}...")
@@ -203,14 +305,14 @@ def consultar_ia(comando: str, hud, client, modelos: list[str], historico_conver
     bloco_memoria = memoria.obter_contexto_usuario(comando) if memoria else ""
 
     if provedor == "claude":
-        chave = hud.config.get("claude_api_key", "").strip()
+        chave = str(hud.config.get("claude_api_key", "")).strip()
         cmd_enriquecido = (
             f"[Memória dos últimos 20 dias]\n{bloco_memoria}\n\nMensagem atual: {comando}"
             if bloco_memoria else comando
         )
         resposta = _consultar_claude(chave, historico_conversa, cmd_enriquecido, modo_codigo=modo_codigo)
     elif provedor == "deepseek":
-        chave = hud.config.get("deepseek_api_key", "").strip()
+        chave = str(hud.config.get("deepseek_api_key", "")).strip()
         cmd_enriquecido = (
             f"[Memória dos últimos 20 dias]\n{bloco_memoria}\n\nMensagem atual: {comando}"
             if bloco_memoria else comando
@@ -218,13 +320,43 @@ def consultar_ia(comando: str, hud, client, modelos: list[str], historico_conver
         resposta = _consultar_deepseek(chave, historico_conversa, cmd_enriquecido, modo_codigo=modo_codigo)
     else:
         prompt_sis = SYSTEM_PROMPT_CODIGO if modo_codigo else SYSTEM_PROMPT_CAPRI
-        prompt = (
-            f"{prompt_sis}\n\n"
-            f"=== MEMÓRIA DE LONGO PRAZO (ÚLTIMOS 20 DIAS) ===\n"
-            f"{bloco_memoria or 'Nenhuma memória anterior registrada.'}\n\n"
-            f"Usuário agora: {comando}\nCapri:"
-        )
-        resposta = _consultar_gemini(client, modelos, prompt, modo_codigo=modo_codigo)
+        ferramentas: list[Any] | None = None
+        if (
+            permitir_ferramentas
+            and criar_ferramentas_capri is not None
+            and client is not None
+            and (forcar_ferramentas or not modo_codigo)
+        ):
+            ferramentas = criar_ferramentas_capri(
+                hud=hud,
+                client=client,
+                observador=observador,
+                agente_reigns=agente_reigns,
+                memoria=memoria,
+            )
+
+        if ferramentas is not None:
+            prompt = (
+                f"=== MEMÓRIA DE LONGO PRAZO (ÚLTIMOS 20 DIAS) ===\n"
+                f"{bloco_memoria or 'Nenhuma memória anterior registrada.'}\n\n"
+                f"Usuário agora: {comando}"
+            )
+            resposta = _consultar_gemini(
+                client,
+                modelos,
+                prompt,
+                modo_codigo=False,
+                ferramentas=ferramentas,
+                system_instruction=prompt_sis,
+            )
+        else:
+            prompt = (
+                f"{prompt_sis}\n\n"
+                f"=== MEMÓRIA DE LONGO PRAZO (ÚLTIMOS 20 DIAS) ===\n"
+                f"{bloco_memoria or 'Nenhuma memória anterior registrada.'}\n\n"
+                f"Usuário agora: {comando}\nCapri:"
+            )
+            resposta = _consultar_gemini(client, modelos, prompt, modo_codigo=modo_codigo)
 
     if resposta:
         historico_conversa.append({"role": "user", "content": comando})
@@ -240,15 +372,15 @@ def consultar_ia(comando: str, hud, client, modelos: list[str], historico_conver
 
 
 # =====================================================================
-# 2. CONTROLES LOCAIS (APPS, MÍDIA, VOLUME E DATA/HORA)
+# 2. CONTROLES LOCAIS RÁPIDOS (LATÊNCIA ZERO)
 # =====================================================================
-def _pressionar_tecla_vk(vk_code: int, vezes: int = 1):
+def _pressionar_tecla_vk(vk_code: int, vezes: int = 1) -> None:
     for _ in range(vezes):
         ctypes.windll.user32.keybd_event(vk_code, 0, 0, 0)
         ctypes.windll.user32.keybd_event(vk_code, 0, 2, 0)
 
 
-def _tentar_abrir_app(cmd_limpo: str, hud) -> bool:
+def _tentar_abrir_app(cmd_limpo: str, hud: Any) -> bool:
     gatilhos = ("abrir ", "abre ", "iniciar ", "inicia ", "executar ", "executa ", "rodar ", "roda ")
     if not any(cmd_limpo.startswith(g) or f" {g}" in cmd_limpo for g in gatilhos):
         return False
@@ -258,12 +390,12 @@ def _tentar_abrir_app(cmd_limpo: str, hud) -> bool:
         if not info.get("ativo", True):
             continue
         apelidos = [remover_acentos(chave.lower())] + [
-            remover_acentos(a.lower()) for a in info.get("apelidos", [])
+            remover_acentos(str(a).lower()) for a in info.get("apelidos", [])
         ]
         for apelido in apelidos:
             if apelido and re.search(rf"\b{re.escape(apelido)}\b", cmd_limpo):
-                caminho = info.get("caminho_abrir", "")
-                nome = info.get("nome", chave)
+                caminho = str(info.get("caminho_abrir", ""))
+                nome = str(info.get("nome", chave))
                 try:
                     os.startfile(caminho)
                     falar(hud, f"Abrindo {nome}.")
@@ -275,7 +407,7 @@ def _tentar_abrir_app(cmd_limpo: str, hud) -> bool:
     return False
 
 
-def _tentar_fechar_app(cmd_limpo: str, hud) -> bool:
+def _tentar_fechar_app(cmd_limpo: str, hud: Any) -> bool:
     gatilhos = ("fechar ", "fecha ", "encerrar ", "encerra ", "matar ")
     if not any(cmd_limpo.startswith(g) or f" {g}" in cmd_limpo for g in gatilhos):
         return False
@@ -285,12 +417,12 @@ def _tentar_fechar_app(cmd_limpo: str, hud) -> bool:
         if not info.get("ativo", True):
             continue
         apelidos = [remover_acentos(chave.lower())] + [
-            remover_acentos(a.lower()) for a in info.get("apelidos", [])
+            remover_acentos(str(a).lower()) for a in info.get("apelidos", [])
         ]
         for apelido in apelidos:
             if apelido and re.search(rf"\b{re.escape(apelido)}\b", cmd_limpo):
-                exe = info.get("executavel", "")
-                nome = info.get("nome", chave)
+                exe = str(info.get("executavel", ""))
+                nome = str(info.get("nome", chave))
                 if not exe:
                     falar(hud, f"Não tenho o nome do executável de {nome} salvo para fechar.")
                     return True
@@ -310,7 +442,7 @@ def _tentar_fechar_app(cmd_limpo: str, hud) -> bool:
     return False
 
 
-def _tentar_comando_midia_e_volume(cmd_limpo: str, hud) -> bool:
+def _tentar_comando_midia_e_volume(cmd_limpo: str, hud: Any) -> bool:
     if any(p in cmd_limpo for p in ("pausar musica", "pausa a musica", "continuar musica", "tocar musica", "play musica")):
         hud.atualizar_estado("SPOTIFY", "#A3E635", "Controlando reprodução de mídia...")
         _pressionar_tecla_vk(0xB3)
@@ -348,36 +480,60 @@ def _tentar_comando_midia_e_volume(cmd_limpo: str, hud) -> bool:
 
 
 # =====================================================================
-# 3. ROTEADOR PRINCIPAL DE COMANDOS (VOZ + BARRA + VISÃO + REIGNS + MEMÓRIA)
+# 3. ROTEADOR HÍBRIDO (ATALHOS LOCAIS + FUNCTION CALLING GEMINI)
 # =====================================================================
 def processar_comando_usuario(
     comando: str,
-    hud,
-    reconhecedor,
-    client,
+    hud: Any,
+    reconhecedor: Any,
+    client: Any,
     modelos: list[str],
-    historico_conversa: list,
-    observador=None,
-    agente_reigns=None,
-    memoria=None,
+    historico_conversa: list[dict[str, str]],
+    observador: Any = None,
+    agente_reigns: Any = None,
+    memoria: Any = None,
     origem: str = "VOZ",
-):
+) -> None:
     cmd_original = (comando or "").strip()
     if not cmd_original:
         return
 
-    # Correções fonéticas (ex: 'valor a' -> 'valorant') só rodam em comandos de VOZ
     if origem == "VOZ":
         cmd = normalizar_frase(cmd_original).strip() or cmd_original.lower()
     else:
         cmd = re.sub(r"\s+", " ", cmd_original.lower()).strip()
 
-    # Versão sem acentos usada para comparar todos os gatilhos de forma confiável
     cmd_limpo = remover_acentos(cmd)
+    cmd_bruto_lower = cmd_original.lower()
     log.info("Processando (%s): '%s'", origem, cmd_original)
 
+    # 0. COMANDOS COMPOSTOS -> delega direto para o Function Calling do Gemini
+    provedor_atual = str(hud.config.get("provedor_ia", "Gemini")).strip().lower()
+    forcar_tela = cmd_bruto_lower.startswith(("/tela", "[tela]", "/ver"))
+    if (
+        not forcar_tela
+        and provedor_atual == "gemini"
+        and client is not None
+        and criar_ferramentas_capri is not None
+        and _eh_comando_composto(cmd_limpo)
+    ):
+        log.info("Comando composto detectado -> roteando para Function Calling do Gemini.")
+        resposta_composta = consultar_ia(
+            cmd_original,
+            hud,
+            client,
+            modelos,
+            historico_conversa,
+            memoria=memoria,
+            observador=observador,
+            agente_reigns=agente_reigns,
+            permitir_ferramentas=True,
+            forcar_ferramentas=True,
+        )
+        falar(hud, resposta_composta, usar_cache=False)
+        return
+
     # 1. VISÃO DE TELA SOB DEMANDA
-    cmd_bruto_lower = cmd_original.lower()
     gatilhos_ver_tela = (
         "olha minha tela", "olha a minha tela", "olhe minha tela", "olhe a minha tela",
         "olha a tela", "olhe a tela", "ver a tela", "ver minha tela", "ve minha tela", "ve a tela",
@@ -394,15 +550,12 @@ def processar_comando_usuario(
         "olha", "olhe", "olhar", "ver", "enxerg", "vendo",
         "ler", "leia", "analis", "explic", "corrig", "complet",
     )
-    # Exige referência explícita à tela/print na regra combinada para não interceptar pedidos comuns de código
     alvos_visao = ("tela", "monitor", "print", "screenshot")
     pediu_visao_combinada = (
         any(v in cmd_limpo for v in verbos_visao)
         and any(a in cmd_limpo for a in alvos_visao)
         and "modo observador" not in cmd_limpo
     )
-
-    forcar_tela = cmd_bruto_lower.startswith(("/tela", "[tela]", "/ver"))
 
     if forcar_tela or any(g in cmd_limpo for g in gatilhos_ver_tela) or pediu_visao_combinada:
         if analisar_tela_sob_demanda is None:
@@ -414,7 +567,14 @@ def processar_comando_usuario(
                 pedido_limpo = cmd_original[len(prefixo):].strip() or "O que está aparecendo na tela?"
                 break
         hud.atualizar_estado("ANALISANDO TELA...", "#54F2F2", "Capturando tela com gemini-3.5-flash...")
-        resposta_visao = analisar_tela_sob_demanda(client, pedido_limpo)
+        monitor_visao = int(hud.config.get("monitor_visao", 1) or 1)
+        modo_captura = str(hud.config.get("modo_captura_visao", "auto") or "auto")
+        resposta_visao = analisar_tela_sob_demanda(
+            client,
+            pedido_limpo,
+            monitor_idx=monitor_visao,
+            modo_captura=modo_captura,
+        )
         falar(hud, resposta_visao, usar_cache=False)
         return
 
@@ -512,6 +672,16 @@ def processar_comando_usuario(
     if _tentar_fechar_app(cmd_limpo, hud):
         return
 
-    # 9. CONVERSA E PESQUISA MULTI-IA COM MEMÓRIA DE 20 DIAS
-    resposta_ia = consultar_ia(cmd_original, hud, client, modelos, historico_conversa, memoria=memoria)
+    # 9. CONVERSA, COMANDOS NATURAIS (FUNCTION CALLING) E PESQUISA MULTI-IA
+    resposta_ia = consultar_ia(
+        cmd_original,
+        hud,
+        client,
+        modelos,
+        historico_conversa,
+        memoria=memoria,
+        observador=observador,
+        agente_reigns=agente_reigns,
+        permitir_ferramentas=True,
+    )
     falar(hud, resposta_ia, usar_cache=False)

@@ -6,6 +6,7 @@ import json
 import zipfile
 import hashlib
 import asyncio
+import threading
 import urllib.request
 from collections import deque
 
@@ -36,6 +37,10 @@ PREFERIR_STT_OFFLINE = True
 USAR_MODELO_VOSK_GRANDE = False
 VOZ_FALLBACK = "pt-BR-FranciscaNeural"
 
+# Limites do cache LRU de áudios reutilizáveis (nunca apaga modelo Vosk nem arquivo temporário)
+MAX_ARQUIVOS_CACHE_AUDIO = 100
+MAX_MB_CACHE_AUDIO = 35.0
+
 RESPOSTAS_CHAMADA = [
     "Oie.",
     "Fala.",
@@ -47,6 +52,71 @@ SESSAO_HTTP = requests.Session()
 _REGEX_NOME_CACHE = re.compile(r"[^a-zA-Z0-9]")
 _MODELO_VOSK_MEMORIA = None
 _VOSK_FALHOU_CARGA = False
+_LOCK_LIMPEZA_CACHE = threading.Lock()
+
+
+def _limpar_cache_audio_excedente(
+    max_arquivos: int = MAX_ARQUIVOS_CACHE_AUDIO,
+    max_mb: float = MAX_MB_CACHE_AUDIO,
+) -> None:
+    """Remove os .mp3 mais antigos em data/cache/voz_*/ mantendo o cache abaixo do teto LRU."""
+    if not _LOCK_LIMPEZA_CACHE.acquire(blocking=False):
+        return
+    try:
+        if not os.path.isdir(PASTA_CACHE):
+            return
+
+        arquivos: list[tuple[float, int, str]] = []
+        tamanho_total = 0
+
+        for nome_sub in os.listdir(PASTA_CACHE):
+            if not nome_sub.startswith("voz_"):
+                continue
+            pasta_voz = os.path.join(PASTA_CACHE, nome_sub)
+            if not os.path.isdir(pasta_voz):
+                continue
+            for nome_arq in os.listdir(pasta_voz):
+                if not nome_arq.lower().endswith(".mp3"):
+                    continue
+                caminho = os.path.join(pasta_voz, nome_arq)
+                try:
+                    st = os.stat(caminho)
+                    arquivos.append((st.st_mtime, st.st_size, caminho))
+                    tamanho_total += st.st_size
+                except OSError:
+                    continue
+
+        limite_bytes = int(max_mb * 1024 * 1024)
+        if len(arquivos) <= max_arquivos and tamanho_total <= limite_bytes:
+            return
+
+        # Ordena do mais antigo (menos usado recentemente) para o mais recente
+        arquivos.sort(key=lambda item: item[0])
+        removidos = 0
+        total_atual = len(arquivos)
+
+        for _, tam, caminho in arquivos:
+            if total_atual <= max_arquivos and tamanho_total <= limite_bytes:
+                break
+            try:
+                os.remove(caminho)
+                tamanho_total -= tam
+                total_atual -= 1
+                removidos += 1
+            except OSError:
+                continue
+
+        if removidos > 0:
+            log.info(
+                "Cache LRU de áudio limpo: %d arquivo(s) antigo(s) removido(s) (restantes: %d, %.1f MB).",
+                removidos,
+                total_atual,
+                tamanho_total / (1024 * 1024),
+            )
+    except Exception as e:
+        log.warning("Aviso na limpeza do cache de áudio: %s", e)
+    finally:
+        _LOCK_LIMPEZA_CACHE.release()
 
 
 def obter_modelo_vosk():
@@ -62,7 +132,7 @@ def obter_modelo_vosk():
         nome_pasta = "vosk-model-pt-fb-v0.1.1-20220516_2113"
     else:
         nome_pasta = "vosk-model-small-pt-0.3"
-    url_modelo = f"https://alphacephei.com/vosk/models/{nome_pasta}.zip"
+    url_modelo = f"[https://alphacephei.com/vosk/models/](https://alphacephei.com/vosk/models/){nome_pasta}.zip"
 
     # 1. Procura primeiro em bin/ (pacote portátil), depois em data/cache/ e no cache legado da raiz
     candidatos = [
@@ -134,18 +204,18 @@ def transcrever_offline_vosk(bytes_audio: bytes, taxa_amostragem: int = 16000) -
         return ""
 
 
-async def _gerar_audio_nativo(texto: str, arquivo_saida: str):
+async def _gerar_audio_nativo(texto: str, arquivo_saida: str) -> None:
     comunicador = edge_tts.Communicate(texto, VOZ_FALLBACK, rate="+4%")
     await comunicador.save(arquivo_saida)
 
 
 def gerar_voz_fish_audio(hud: CapriHUD, texto: str, arquivo_saida: str) -> bool:
-    chave_limpa = hud.config.get("fish_api_key", "").strip()
-    id_limpo = hud.config.get("fish_voice_id", "").strip().rstrip("/").split("/")[-1]
+    chave_limpa = str(hud.config.get("fish_api_key", "")).strip()
+    id_limpo = str(hud.config.get("fish_voice_id", "")).strip().rstrip("/").split("/")[-1]
     if not chave_limpa or not id_limpo:
         return False
 
-    url = "https://api.fish.audio/v1/tts"
+    url = "[https://api.fish.audio/v1/tts](https://api.fish.audio/v1/tts)"
     headers = {
         "Authorization": f"Bearer {chave_limpa}",
         "Content-Type": "application/json",
@@ -177,7 +247,7 @@ def _obter_caminho_audio(hud: CapriHUD, texto_limpo: str, usar_cache: bool) -> s
         os.makedirs(PASTA_CACHE, exist_ok=True)
         return os.path.join(PASTA_CACHE, "_fala_temp.mp3")
 
-    id_voz = hud.config.get("fish_voice_id", "").strip().rstrip("/").split("/")[-1]
+    id_voz = str(hud.config.get("fish_voice_id", "")).strip().rstrip("/").split("/")[-1]
     pasta_voz = f"voz_{id_voz[:12]}" if id_voz else "voz_padrao"
     pasta_destino = os.path.join(PASTA_CACHE, pasta_voz)
     os.makedirs(pasta_destino, exist_ok=True)
@@ -187,7 +257,7 @@ def _obter_caminho_audio(hud: CapriHUD, texto_limpo: str, usar_cache: bool) -> s
     return os.path.join(pasta_destino, f"{prefixo}_{hash_texto}.mp3")
 
 
-def falar(hud: CapriHUD, texto: str, usar_cache: bool = True):
+def falar(hud: CapriHUD, texto: str, usar_cache: bool = True) -> None:
     """Exibe a resposta formatada no Balão de Fala e reproduz a versão limpa por voz."""
     texto_exibicao = (texto or "").strip()
     if not texto_exibicao:
@@ -227,15 +297,25 @@ def falar(hud: CapriHUD, texto: str, usar_cache: bool = True):
             and os.path.getsize(arquivo_audio) > 500
         )
 
-        if not tem_cache_disco:
+        if tem_cache_disco:
+            # Atualiza o timestamp (LRU) para preservar frases usadas com frequência
+            try:
+                os.utime(arquivo_audio, None)
+            except OSError:
+                pass
+        else:
             try:
                 if not gerar_voz_fish_audio(hud, texto_fala, arquivo_audio):
                     asyncio.run(_gerar_audio_nativo(texto_fala, arquivo_audio))
             except PermissionError:
-                # Fallback caso o Windows ainda segure o handle do arquivo temporário
-                arquivo_audio = os.path.join(PASTA_CACHE, f"_fala_temp_{int(time.time() * 1000)}.mp3")
+                arquivo_audio = os.path.join(
+                    PASTA_CACHE, f"_fala_temp_{int(time.time() * 1000)}.mp3"
+                )
                 if not gerar_voz_fish_audio(hud, texto_fala, arquivo_audio):
                     asyncio.run(_gerar_audio_nativo(texto_fala, arquivo_audio))
+
+            if usar_cache:
+                threading.Thread(target=_limpar_cache_audio_excedente, daemon=True).start()
 
         pygame.mixer.music.load(arquivo_audio)
         pygame.mixer.music.play()
@@ -243,7 +323,11 @@ def falar(hud: CapriHUD, texto: str, usar_cache: bool = True):
         t_inicio = time.time()
         tem_cmd_fn = getattr(hud, "tem_comando_texto", lambda: False)
 
-        while pygame.mixer.music.get_busy() and hud.rodando and not getattr(hud, "voz_mutada", False):
+        while (
+            pygame.mixer.music.get_busy()
+            and hud.rodando
+            and not getattr(hud, "voz_mutada", False)
+        ):
             if tem_cmd_fn():
                 pygame.mixer.music.stop()
                 break
@@ -252,7 +336,9 @@ def falar(hud: CapriHUD, texto: str, usar_cache: bool = True):
             if cadencia_silaba < 0.16:
                 hud.nivel_voz = 0.08
             else:
-                hud.nivel_voz = min(1.0, cadencia_silaba * 1.15 + np.random.uniform(0.0, 0.15))
+                hud.nivel_voz = min(
+                    1.0, cadencia_silaba * 1.15 + float(np.random.uniform(0.0, 0.15))
+                )
             relogio.tick(22)
 
         hud.nivel_voz = 0.0
@@ -275,8 +361,8 @@ def ouvir_microfone_com_hud(
     blocos_silencio_fim = 9 if aguardando_comando else 7
     blocos_duracao_max = 85
 
-    buffer_pre_fala = deque(maxlen=5)
-    quadros_fala = []
+    buffer_pre_fala: deque[np.ndarray] = deque(maxlen=5)
+    quadros_fala: list[np.ndarray] = []
     falando = False
     blocos_silencio = 0
 
@@ -332,7 +418,7 @@ def ouvir_microfone_com_hud(
         gravacao_1d = np.concatenate(quadros_fala, axis=0).flatten().astype(np.float32)
         del quadros_fala
 
-        pico_max = np.max(np.abs(gravacao_1d))
+        pico_max = float(np.max(np.abs(gravacao_1d)))
         if pico_max > 0:
             ganho = min(3.5, 24000.0 / pico_max)
             gravacao_1d = np.clip(gravacao_1d * ganho, -32768.0, 32767.0)
@@ -341,7 +427,7 @@ def ouvir_microfone_com_hud(
         del gravacao_1d
 
         hud.atualizar_estado("TRANSCREVENDO...", "#F59E0B")
-        usar_offline = hud.config.get("stt_offline", PREFERIR_STT_OFFLINE)
+        usar_offline = bool(hud.config.get("stt_offline", PREFERIR_STT_OFFLINE))
         ja_tentou_vosk = False
 
         if usar_offline and VOSK_DISPONIVEL:

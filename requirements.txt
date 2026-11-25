@@ -9,3 +9,4 @@ pyautogui
 requests
 edge-tts
 numpy
+spotipy

@@ -3,6 +3,7 @@ import sys
 import json
 import shutil
 import winreg
+from typing import Any
 
 # Raiz do projeto (sobe 2 níveis a partir de src/core/config.py)
 if getattr(sys, "frozen", False):
@@ -20,7 +21,7 @@ os.makedirs(PASTA_DATA, exist_ok=True)
 os.makedirs(PASTA_CACHE, exist_ok=True)
 
 
-def configurar_inicializacao_windows(ativar: bool = True):
+def configurar_inicializacao_windows(ativar: bool = True) -> None:
     """Registra ou remove a Capri da inicialização automática do Windows."""
     chave_reg = r"Software\Microsoft\Windows\CurrentVersion\Run"
     nome_app = "CapriAssistant"
@@ -43,7 +44,7 @@ def configurar_inicializacao_windows(ativar: bool = True):
         print(f"[Aviso Registro Windows]: {e}")
 
 
-def _migrar_config_antigo_se_necessario():
+def _migrar_config_antigo_se_necessario() -> None:
     """Se existir capri_config.json na raiz e ainda não houver em data/, move automaticamente."""
     config_raiz = os.path.join(PASTA_PROJETO, "capri_config.json")
     if not os.path.exists(ARQUIVO_CONFIG) and os.path.exists(config_raiz):
@@ -54,20 +55,24 @@ def _migrar_config_antigo_se_necessario():
             print(f"[Aviso Migração Config]: {e}")
 
 
-def carregar_configuracoes() -> dict:
+def carregar_configuracoes() -> dict[str, Any]:
     _migrar_config_antigo_se_necessario()
-    padrao = {
+    padrao: dict[str, Any] = {
         "provedor_ia": "Gemini",
         "gemini_api_key": "",
         "claude_api_key": "",
         "deepseek_api_key": "",
         "fish_api_key": "",
         "fish_voice_id": "",
+        "spotify_client_id": "",
+        "spotify_redirect_uri": "http://127.0.0.1:8888/callback",
         "iniciar_com_windows": True,
         "pose_padrao": "Padrao",
         "modo_recorte_transparente": False,
         "stt_offline": True,
         "voz_ativa": True,
+        "monitor_visao": 1,
+        "modo_captura_visao": "auto",
         "apps": {},
     }
     if not os.path.exists(ARQUIVO_CONFIG):
@@ -75,6 +80,8 @@ def carregar_configuracoes() -> dict:
     try:
         with open(ARQUIVO_CONFIG, "r", encoding="utf-8") as f:
             dados = json.load(f)
+        if not isinstance(dados, dict):
+            return padrao
         for k, v in padrao.items():
             if k not in dados:
                 dados[k] = v
@@ -83,7 +90,7 @@ def carregar_configuracoes() -> dict:
         return padrao
 
 
-def salvar_configuracoes(config: dict):
+def salvar_configuracoes(config: dict[str, Any]) -> None:
     try:
         os.makedirs(PASTA_DATA, exist_ok=True)
         with open(ARQUIVO_CONFIG, "w", encoding="utf-8") as f:

@@ -310,6 +310,33 @@ class MemoriaCapri:
             dias_atras = max(1, int((agora - row["citado_em"]) // 86400))
             return {"id": row["id"], "descricao": row["descricao"], "dias_atras": dias_atras}
 
+    def salvar_evento_manual(self, descricao: str, dias_para_perguntar: int = 2) -> bool:
+        """Salva um lembrete/evento explicitamente solicitado pelo usuário (retorna True se inseriu)."""
+        desc = (descricao or "").strip()
+        if not desc:
+            return False
+        dias = max(1, min(14, int(dias_para_perguntar)))
+        agora = time.time()
+        perguntar_apos = agora + (dias * 86400)
+
+        with self._lock:
+            if self._fechada:
+                return False
+            cur = self.conn.cursor()
+            cur.execute(
+                "SELECT id FROM eventos_usuario WHERE lower(descricao) = ? AND perguntado = 0",
+                (desc.lower(),),
+            )
+            if cur.fetchone():
+                return False
+            self.conn.execute(
+                "INSERT INTO eventos_usuario (descricao, citado_em, perguntar_apos, perguntado) VALUES (?, ?, ?, 0)",
+                (desc, agora, perguntar_apos),
+            )
+            self.conn.commit()
+        log.info("Lembrete manual salvo -> '%s' (perguntar em %d dia(s))", desc, dias)
+        return True
+
     def marcar_evento_como_perguntado(self, evento_id: int) -> None:
         with self._lock:
             if self._fechada:

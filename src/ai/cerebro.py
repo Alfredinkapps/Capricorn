@@ -20,10 +20,11 @@ except Exception as e:
     analisar_tela_sob_demanda = None
 
 try:
-    from ai.ferramentas import criar_ferramentas_capri
+    from ai.ferramentas import criar_ferramentas_capri, pesquisar_web_gemini
 except Exception as e:
     log.warning("Módulo de ferramentas indisponível (ai.ferramentas): %s", e)
     criar_ferramentas_capri = None
+    pesquisar_web_gemini = None
 
 try:
     from system import spotify as spotify_control
@@ -39,8 +40,9 @@ SYSTEM_PROMPT_CAPRI = (
     "exibida em um HUD compacto e falada em voz alta. Use suas memórias dos últimos 20 dias "
     "de forma natural quando forem relevantes, sem ficar anunciando 'segundo meu banco de dados'. "
     "Quando o usuário pedir ações no PC (abrir/fechar programas, música no Spotify, volume, "
-    "analisar a tela, salvar lembrete ou alternar modos), use as ferramentas disponíveis — "
-    "você pode chamar várias ferramentas na mesma resposta para comandos compostos."
+    "analisar a tela, pesquisar informações atuais na web, salvar lembrete ou alternar modos), "
+    "use as ferramentas disponíveis — você pode chamar várias ferramentas na mesma resposta "
+    "para comandos compostos."
 )
 
 SYSTEM_PROMPT_CODIGO = (
@@ -70,12 +72,27 @@ _VERBOS_ACAO_COMPOSTA = (
     "toca", "tocar", "bota", "botar", "coloca", "colocar",
     "pausa", "pausar", "pula", "pular", "aumenta", "aumentar",
     "diminui", "diminuir", "abaixa", "abaixar", "muta", "mutar",
-    "olha", "olhar", "analisa", "analisar", "lembra", "lembrar",
+    "olha", "olhar", "analisa", "analisar", "pesquisa", "pesquisar",
+    "busca", "buscar", "procura", "procurar", "lembra", "lembrar",
     "salva", "salvar", "ativa", "ativar", "desativa", "desativar",
     "joga", "jogue", "jogar", "solta", "soltar",
 )
 _REGEX_VERBOS_ACAO = re.compile(
     r"\b(?:" + "|".join(re.escape(v) for v in _VERBOS_ACAO_COMPOSTA) + r")\b"
+)
+
+_GATILHOS_BUSCA_WEB_DIRETA = (
+    "pesquisa na internet", "pesquise na internet", "pesquisar na internet",
+    "pesquisa no google", "pesquise no google", "pesquisar no google",
+    "busca na internet", "busca no google", "procura no google", "procura na internet",
+    "ultimas noticias", "noticias de hoje", "noticia de hoje", "noticias sobre",
+    "previsao do tempo", "clima hoje", "clima em", "vai chover",
+    "quanto ta o dolar", "quanto esta o dolar", "cotacao do dolar", "cotacao do euro",
+    "cotacao do bitcoin", "preco do bitcoin", "valor do dolar",
+    "placar do jogo", "quanto foi o jogo", "quanto ficou o jogo", "quem ganhou o jogo",
+    "tabela do brasileirao", "classificacao do brasileirao", "proximo jogo do",
+    "versao mais recente", "ultima versao do", "ultima versao da",
+    "lancamento de", "quando lanca", "quando estreia",
 )
 
 
@@ -89,6 +106,11 @@ def _eh_comando_composto(cmd_limpo: str) -> bool:
     if not _REGEX_CONECTOR_COMPOSTO.search(cmd_limpo):
         return False
     return len(_REGEX_VERBOS_ACAO.findall(cmd_limpo)) >= 2
+
+
+def _precisa_busca_web_direta(cmd_limpo: str) -> bool:
+    """Identifica perguntas claramente dependentes de dados ao vivo para ir direto ao Grounding."""
+    return any(g in cmd_limpo for g in _GATILHOS_BUSCA_WEB_DIRETA)
 
 
 # =====================================================================
@@ -152,15 +174,16 @@ def _consultar_gemini(
     usar_tools = bool(ferramentas)
     config_tools: types.GenerateContentConfig | None = None
     if usar_tools:
-        config_tools = types.GenerateContentConfig(
-            system_instruction=system_instruction or SYSTEM_PROMPT_CAPRI,
-            tools=ferramentas,
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(
-                disable=False,
-                maximum_remote_calls=4,
-            ),
+        config_tools = types.GenerateContentConfig.model_validate(
+            {
+                "system_instruction": system_instruction or SYSTEM_PROMPT_CAPRI,
+                "tools": ferramentas,
+                "automatic_function_calling": {
+                    "disable": False,
+                    "maximum_remote_calls": 4,
+                },
+            }
         )
-
     ultimo_erro = ""
     for modelo in lista_testar:
         try:
@@ -189,7 +212,6 @@ def _consultar_gemini(
             log.warning("Aviso modelo %s (tools=%s): %s", modelo, usar_tools, e)
             continue
 
-    # Fallback sem tools caso algum modelo tenha recusado Function Calling
     if usar_tools:
         log.info("Tentando fallback do Gemini em modo texto simples (sem tools)...")
         prompt_fallback = f"{system_instruction or SYSTEM_PROMPT_CAPRI}\n\n{prompt_completo}"
@@ -330,6 +352,7 @@ def consultar_ia(
             ferramentas = criar_ferramentas_capri(
                 hud=hud,
                 client=client,
+                modelos=modelos,
                 observador=observador,
                 agente_reigns=agente_reigns,
                 memoria=memoria,
@@ -480,7 +503,7 @@ def _tentar_comando_midia_e_volume(cmd_limpo: str, hud: Any) -> bool:
 
 
 # =====================================================================
-# 3. ROTEADOR HÍBRIDO (ATALHOS LOCAIS + FUNCTION CALLING GEMINI)
+# 3. ROTEADOR HÍBRIDO (ATALHOS LOCAIS + BUSCA WEB + FUNCTION CALLING)
 # =====================================================================
 def processar_comando_usuario(
     comando: str,
@@ -507,15 +530,52 @@ def processar_comando_usuario(
     cmd_bruto_lower = cmd_original.lower()
     log.info("Processando (%s): '%s'", origem, cmd_original)
 
-    # 0. COMANDOS COMPOSTOS -> delega direto para o Function Calling do Gemini
     provedor_atual = str(hud.config.get("provedor_ia", "Gemini")).strip().lower()
+    busca_web_ativa = bool(hud.config.get("busca_web_ativa", True))
     forcar_tela = cmd_bruto_lower.startswith(("/tela", "[tela]", "/ver"))
+    forcar_web = cmd_bruto_lower.startswith(("/web", "/busca", "/google"))
+
+    # 0A. BUSCA WEB EM TEMPO REAL (atalho /web ou perguntas ao vivo sem ações compostas)
+    eh_composto = _eh_comando_composto(cmd_limpo)
+    if (
+        (forcar_web or (_precisa_busca_web_direta(cmd_limpo) and not eh_composto))
+        and not forcar_tela
+        and provedor_atual == "gemini"
+        and busca_web_ativa
+        and client is not None
+        and pesquisar_web_gemini is not None
+    ):
+        consulta_web = cmd_original
+        for prefixo in ("/web", "/busca", "/google"):
+            if cmd_bruto_lower.startswith(prefixo):
+                consulta_web = cmd_original[len(prefixo):].strip()
+                break
+        if consulta_web:
+            hud.atualizar_estado("PESQUISANDO WEB...", "#54F2F2", f"Google Search: {consulta_web}")
+            bloco_mem = memoria.obter_contexto_usuario(consulta_web) if memoria else ""
+            resposta_web = pesquisar_web_gemini(
+                client,
+                consulta_web,
+                modelos=modelos,
+                contexto_memoria=bloco_mem,
+            )
+            if resposta_web:
+                historico_conversa.append({"role": "user", "content": consulta_web})
+                historico_conversa.append({"role": "assistant", "content": resposta_web})
+                if len(historico_conversa) > 12:
+                    del historico_conversa[:-12]
+                if memoria:
+                    memoria.registrar_conversa(consulta_web, resposta_web)
+                falar(hud, resposta_web, usar_cache=False)
+                return
+
+    # 0B. COMANDOS COMPOSTOS -> delega direto para o Function Calling do Gemini
     if (
         not forcar_tela
         and provedor_atual == "gemini"
         and client is not None
         and criar_ferramentas_capri is not None
-        and _eh_comando_composto(cmd_limpo)
+        and eh_composto
     ):
         log.info("Comando composto detectado -> roteando para Function Calling do Gemini.")
         resposta_composta = consultar_ia(
@@ -672,7 +732,7 @@ def processar_comando_usuario(
     if _tentar_fechar_app(cmd_limpo, hud):
         return
 
-    # 9. CONVERSA, COMANDOS NATURAIS (FUNCTION CALLING) E PESQUISA MULTI-IA
+    # 9. CONVERSA, COMANDOS NATURAIS (FUNCTION CALLING + BUSCA WEB) E PESQUISA MULTI-IA
     resposta_ia = consultar_ia(
         cmd_original,
         hud,

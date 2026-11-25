@@ -5,10 +5,19 @@ from datetime import datetime
 from collections.abc import Callable
 from typing import Any
 
+from google.genai import types
+
 from audio.comandos import remover_acentos
 from core.logger import obter_logger
 
 log = obter_logger("ferramentas")
+
+MODELOS_BUSCA_WEB_FALLBACK = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+]
 
 try:
     from ai.visao import analisar_tela_sob_demanda
@@ -21,6 +30,66 @@ try:
 except Exception as e:
     log.warning("Spotify indisponível para ferramentas: %s", e)
     spotify_control = None
+
+
+def pesquisar_web_gemini(
+    client: Any,
+    consulta: str,
+    modelos: list[str] | None = None,
+    contexto_memoria: str = "",
+) -> str:
+    """
+    Executa busca na web em tempo real usando Google Search Grounding do Gemini.
+    Retorna resposta direta em português do Brasil pronta para HUD e voz (sem URLs longas).
+    """
+    if client is None:
+        return "Configure sua chave da API do Gemini antes de pesquisar na web."
+
+    pergunta = (consulta or "").strip()
+    if not pergunta:
+        return "Informe o que você deseja pesquisar na web."
+
+    hoje = datetime.now().strftime("%d/%m/%Y (%H:%M)")
+    instrucao = (
+        f"Você é a Capri, assistente virtual cyberpunk. Data/hora atual: {hoje}. "
+        "Use a pesquisa do Google para responder com dados atualizados e verificados. "
+        "Responda em português do Brasil em 1 a 3 frases curtas e diretas (sem URLs nem links crus, "
+        "pois o texto será lido em voz alta). Cite valores, placares, datas ou versões exatas quando aplicável."
+    )
+
+    prompt = (
+        f"Contexto recente do usuário:\n{contexto_memoria}\n\nPergunta atual: {pergunta}"
+        if contexto_memoria
+        else pergunta
+    )
+
+    lista_modelos = list(dict.fromkeys((modelos or []) + MODELOS_BUSCA_WEB_FALLBACK))
+    config_busca = types.GenerateContentConfig.model_validate(
+        {
+            "system_instruction": instrucao,
+            "tools": [types.Tool(google_search=types.GoogleSearch())],
+        }
+    )
+
+    ultimo_erro = ""
+    for modelo in lista_modelos:
+        try:
+            resp = client.models.generate_content(
+                model=modelo,
+                contents=prompt,
+                config=config_busca,
+            )
+            texto = (getattr(resp, "text", "") or "").strip()
+            if texto:
+                log.info("Busca Web Grounding OK -> %s | consulta='%s'", modelo, pergunta[:60])
+                return texto
+        except Exception as e:
+            ultimo_erro = str(e)
+            log.warning("Aviso Busca Web (%s): %s", modelo, e)
+            continue
+
+    log.error("Falha na Busca Web Grounding: %s", ultimo_erro)
+    return ""
 
 
 def _pressionar_vk(vk_code: int, vezes: int = 1) -> None:
@@ -37,7 +106,6 @@ def _buscar_app_config(
     if not alvo:
         return None
 
-    # 1. Busca exata por chave, nome ou apelido
     for chave, info in apps.items():
         if not info.get("ativo", True):
             continue
@@ -48,7 +116,6 @@ def _buscar_app_config(
         if alvo in candidatos:
             return chave, info
 
-    # 2. Busca por correspondência parcial (ex: 'code' -> 'vscode')
     for chave, info in apps.items():
         if not info.get("ativo", True):
             continue
@@ -66,6 +133,7 @@ def _buscar_app_config(
 def criar_ferramentas_capri(
     hud: Any,
     client: Any,
+    modelos: list[str] | None = None,
     observador: Any = None,
     agente_reigns: Any = None,
     memoria: Any = None,
@@ -225,6 +293,22 @@ def criar_ferramentas_capri(
             )
         )
 
+    def pesquisar_web(consulta: str) -> str:
+        """
+        Pesquisa informações atualizadas na internet em tempo real via Google Search.
+        Use para notícias recentes, placares de jogos, classificação de campeonatos, previsão do tempo,
+        cotação de moedas, lançamentos, preços atuais ou versões recentes de bibliotecas/softwares.
+        """
+        if not bool(hud.config.get("busca_web_ativa", True)):
+            return "A pesquisa web em tempo real está desativada nas configurações."
+        termo = (consulta or "").strip()
+        if not termo:
+            return "Informe o assunto para pesquisar na web."
+        hud.atualizar_estado("PESQUISANDO WEB...", "#54F2F2", f"Google Search: {termo}")
+        log.info("[Tool] pesquisar_web -> '%s'", termo)
+        resultado = pesquisar_web_gemini(client, termo, modelos=modelos)
+        return resultado or "Não consegui obter resultados atualizados da web agora."
+
     def salvar_lembrete(descricao: str, dias_para_perguntar: int = 2) -> str:
         """
         Salva um lembrete, prova, compromisso ou evento importante na memória de longo prazo da Capri.
@@ -283,7 +367,7 @@ def criar_ferramentas_capri(
         agora = datetime.now()
         return agora.strftime("Hoje é %d/%m/%Y e agora são %H:%M.")
 
-    return [
+    ferramentas: list[Callable[..., str]] = [
         abrir_aplicativo,
         fechar_aplicativo,
         listar_aplicativos_disponiveis,
@@ -295,3 +379,7 @@ def criar_ferramentas_capri(
         alternar_modo_capri,
         obter_data_hora_atual,
     ]
+    if bool(hud.config.get("busca_web_ativa", True)):
+        ferramentas.append(pesquisar_web)
+
+    return ferramentas

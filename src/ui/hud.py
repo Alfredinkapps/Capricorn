@@ -296,10 +296,17 @@ class CapriHUD:
     TEXT_WHITE = "#F1F5F9"
     TEXT_GRAY = "#A3969C"
     TEXT_PINK = "#F06A82"
-    VERSAO_HUD = "v0.2.0"
+    VERSAO_HUD = "v0.3.0"
 
     def __init__(self):
         self.config: dict[str, Any] = escanear_e_atualizar_apps(carregar_configuracoes())
+        try:
+            from audio.comandos import atualizar_apelidos_ativacao
+            atualizar_apelidos_ativacao(
+                self.config.get("apelidos_ativacao", ["capri", "cap", "capricornio"])
+            )
+        except Exception:
+            pass
         self.rodando = True
         self.pausada = False
         self.reiniciar_ia = False
@@ -1312,6 +1319,8 @@ class CapriHUD:
             "OUVINDO VOCÊ...": "Captando áudio do microfone...",
             "TRANSCREVENDO...": "Processando voz localmente na RAM...",
             "PESQUISANDO IA...": f"Consultando API ({self.config.get('provedor_ia', 'Gemini')})...",
+            "PESQUISANDO WEB...": "Buscando dados atualizados no Google...",
+            "EXECUTANDO AÇÃO...": "Executando ferramentas no sistema...",
             "GERANDO CÓDIGO...": f"Gerando código ({self.config.get('provedor_ia', 'Gemini')})...",
             "ANALISANDO TELA...": "Analisando sua tela com Gemini...",
             "PROCESSANDO...": "Executando instrução...",
@@ -1776,6 +1785,24 @@ class CapriHUD:
         for var in vars_chaves.values():
             var.trace_add("write", salvar_chaves_em_memoria)
 
+        apelidos_iniciais = self.config.get("apelidos_ativacao", ["capri", "cap", "capricornio"])
+        if not isinstance(apelidos_iniciais, list):
+            apelidos_iniciais = ["capri", "cap", "capricornio"]
+        var_apelidos = tk.StringVar(value=", ".join(str(a) for a in apelidos_iniciais))
+
+        def salvar_apelidos(*_args: Any) -> None:
+            texto_ap = var_apelidos.get()
+            try:
+                from audio.comandos import atualizar_apelidos_ativacao
+                lista_limpa = atualizar_apelidos_ativacao(texto_ap)
+            except Exception:
+                lista_limpa = [
+                    p.strip().lower() for p in texto_ap.split(",") if len(p.strip()) >= 2
+                ] or ["capri", "cap", "capricornio"]
+            self.config["apelidos_ativacao"] = lista_limpa
+            var_apelidos.set(", ".join(lista_limpa))
+            salvar_configuracoes(self.config)
+
         def renderizar_conteudo_aba() -> None:
             try:
                 win.unbind_all("<MouseWheel>")
@@ -1954,9 +1981,41 @@ class CapriHUD:
                 btn_dir.bind("<Button-1>", lambda _e: _mudar_ia(1))
 
             elif aba == "SISTEMA":
-                criar_divisor_secao(col_direita, "Preferências de Operação & Sprites")
+                canvas_sys = tk.Canvas(col_direita, bg=BG_MAIN, highlightthickness=0)
+                scroll_sys = tk.Scrollbar(
+                    col_direita,
+                    orient="vertical",
+                    command=canvas_sys.yview,
+                    bg=BG_MAIN,
+                    troughcolor=BG_MAIN,
+                    activebackground=CORAL,
+                )
+                frame_sys = tk.Frame(canvas_sys, bg=BG_MAIN)
+                win_sys_id = canvas_sys.create_window((0, 0), window=frame_sys, anchor="nw")
+                canvas_sys.bind(
+                    "<Configure>", lambda e: canvas_sys.itemconfig(win_sys_id, width=e.width)
+                )
+                frame_sys.bind(
+                    "<Configure>",
+                    lambda _e: canvas_sys.configure(scrollregion=canvas_sys.bbox("all")),
+                )
+                canvas_sys.configure(yscrollcommand=scroll_sys.set)
+                canvas_sys.pack(side="left", fill="both", expand=True)
+                scroll_sys.pack(side="right", fill="y", padx=(6, 0))
 
-                linha_mute = tk.Frame(col_direita, bg=BG_MAIN, pady=6)
+                def _rolar_sys(event: Any) -> None:
+                    if canvas_sys.winfo_exists():
+                        canvas_sys.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+                canvas_sys.bind(
+                    "<Enter>", lambda _e: canvas_sys.bind_all("<MouseWheel>", _rolar_sys)
+                )
+                canvas_sys.bind("<Leave>", lambda _e: canvas_sys.unbind_all("<MouseWheel>"))
+
+                # --- SEÇÃO 1: OPERAÇÃO & SPRITES ---
+                criar_divisor_secao(frame_sys, "Preferências de Operação & Sprites")
+
+                linha_mute = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
                 linha_mute.pack(fill="x")
                 tk.Label(
                     linha_mute,
@@ -1971,7 +2030,7 @@ class CapriHUD:
                     lambda ativo: self.alternar_pausa() if (ativo == self.pausada) else None,
                 ).pack(side="right")
 
-                linha_startup = tk.Frame(col_direita, bg=BG_MAIN, pady=6)
+                linha_startup = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
                 linha_startup.pack(fill="x")
                 tk.Label(
                     linha_startup,
@@ -1992,7 +2051,7 @@ class CapriHUD:
                     _alternar_startup,
                 ).pack(side="right")
 
-                linha_recorte = tk.Frame(col_direita, bg=BG_MAIN, pady=6)
+                linha_recorte = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
                 linha_recorte.pack(fill="x")
                 tk.Label(
                     linha_recorte,
@@ -2018,7 +2077,7 @@ class CapriHUD:
                     "Mao no Queixo", "Sentada na Borda", "Sentada no Chao",
                     "Agachada", "Reclinada",
                 ]
-                f_pose = tk.Frame(col_direita, bg=BG_MAIN, pady=8)
+                f_pose = tk.Frame(frame_sys, bg=BG_MAIN, pady=8)
                 f_pose.pack(fill="x")
                 tk.Label(
                     f_pose,
@@ -2061,7 +2120,137 @@ class CapriHUD:
                 l_pv.bind("<Button-1>", lambda _e: _mudar_pose(1))
                 b_pd.bind("<Button-1>", lambda _e: _mudar_pose(1))
 
-                criar_divisor_secao(col_direita, "Visão de Tela & Monitor")
+                # --- SEÇÃO 2: VELOCIDADE, MICROFONE & INTELIGÊNCIA ---
+                criar_divisor_secao(frame_sys, "Velocidade, Microfone & Inteligência")
+
+                linha_tts = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
+                linha_tts.pack(fill="x")
+                tk.Label(
+                    linha_tts,
+                    text="TTS em Fila por Frase (Fala Mais Rápida)",
+                    fg=CORAL,
+                    bg=BG_MAIN,
+                    font=("Consolas", 10, "bold"),
+                ).pack(side="left")
+
+                def _alternar_tts_frase(ativo: bool) -> None:
+                    self.config["tts_por_frase"] = ativo
+                    salvar_configuracoes(self.config)
+
+                criar_switch_cyberpunk(
+                    linha_tts,
+                    bool(self.config.get("tts_por_frase", True)),
+                    _alternar_tts_frase,
+                ).pack(side="right")
+
+                linha_web = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
+                linha_web.pack(fill="x")
+                tk.Label(
+                    linha_web,
+                    text="Pesquisa Web em Tempo Real (Google)",
+                    fg=CORAL,
+                    bg=BG_MAIN,
+                    font=("Consolas", 10, "bold"),
+                ).pack(side="left")
+
+                def _alternar_busca_web(ativo: bool) -> None:
+                    self.config["busca_web_ativa"] = ativo
+                    salvar_configuracoes(self.config)
+
+                criar_switch_cyberpunk(
+                    linha_web,
+                    bool(self.config.get("busca_web_ativa", True)),
+                    _alternar_busca_web,
+                ).pack(side="right")
+
+                niveis_mic: list[tuple[int, str]] = [
+                    (180, "Muito Alta (180)"),
+                    (260, "Alta (260)"),
+                    (340, "Padrão (340)"),
+                    (450, "Média (450)"),
+                    (600, "Baixa / Ruído (600)"),
+                    (800, "Muito Baixa (800)"),
+                ]
+                limiar_salvo = int(self.config.get("limiar_voz", 340) or 340)
+                idx_mic_atual = min(
+                    range(len(niveis_mic)),
+                    key=lambda i: abs(niveis_mic[i][0] - limiar_salvo),
+                )
+                estado_mic = [idx_mic_atual]
+                var_mic = tk.StringVar(value=niveis_mic[idx_mic_atual][1])
+
+                f_mic = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
+                f_mic.pack(fill="x")
+                tk.Label(
+                    f_mic,
+                    text="Sensibilidade do Microfone",
+                    fg=CORAL,
+                    bg=BG_MAIN,
+                    font=("Consolas", 10, "bold"),
+                ).pack(side="left")
+                box_mic = tk.Frame(f_mic, bg=CORAL_DIM, padx=1, pady=1)
+                box_mic.pack(side="right")
+                inner_mic = tk.Frame(box_mic, bg=BG_INPUT, width=240, height=26, cursor="hand2")
+                inner_mic.pack_propagate(False)
+                inner_mic.pack()
+
+                def _mudar_mic(delta: int) -> None:
+                    estado_mic[0] = (estado_mic[0] + delta) % len(niveis_mic)
+                    valor_limiar, rotulo_mic = niveis_mic[estado_mic[0]]
+                    var_mic.set(rotulo_mic)
+                    self.config["limiar_voz"] = valor_limiar
+                    salvar_configuracoes(self.config)
+
+                b_ke = tk.Label(
+                    inner_mic, text="<", fg=CYAN, bg=BG_INPUT, font=("Consolas", 10, "bold"), cursor="hand2"
+                )
+                b_ke.pack(side="left", padx=10)
+                l_kv = tk.Label(
+                    inner_mic,
+                    textvariable=var_mic,
+                    fg=CYAN,
+                    bg=BG_INPUT,
+                    font=("Consolas", 10, "bold"),
+                    cursor="hand2",
+                )
+                l_kv.pack(expand=True)
+                b_kd = tk.Label(
+                    inner_mic, text=">", fg=CYAN, bg=BG_INPUT, font=("Consolas", 10, "bold"), cursor="hand2"
+                )
+                b_kd.pack(side="right", padx=10)
+
+                b_ke.bind("<Button-1>", lambda _e: _mudar_mic(-1))
+                l_kv.bind("<Button-1>", lambda _e: _mudar_mic(1))
+                b_kd.bind("<Button-1>", lambda _e: _mudar_mic(1))
+
+                f_apelidos = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
+                f_apelidos.pack(fill="x")
+                tk.Label(
+                    f_apelidos,
+                    text="Palavras de Ativação (vírgula)",
+                    fg=CORAL,
+                    bg=BG_MAIN,
+                    font=("Consolas", 10, "bold"),
+                ).pack(side="left")
+                box_ap = tk.Frame(f_apelidos, bg=CORAL_DIM, padx=1, pady=1)
+                box_ap.pack(side="right")
+                entry_ap = tk.Entry(
+                    box_ap,
+                    textvariable=var_apelidos,
+                    bg=BG_INPUT,
+                    fg=CYAN,
+                    insertbackground=CYAN,
+                    font=("Consolas", 10, "bold"),
+                    relief="flat",
+                    width=28,
+                    justify="center",
+                )
+                entry_ap.pack(ipady=3, ipadx=6)
+                entry_ap.bind("<FocusOut>", salvar_apelidos)
+                entry_ap.bind("<Return>", salvar_apelidos)
+
+                # --- SEÇÃO 3: VISÃO DE TELA & MONITOR ---
+                criar_divisor_secao(frame_sys, "Visão de Tela & Monitor")
 
                 try:
                     from ai.visao import listar_monitores
@@ -2077,7 +2266,7 @@ class CapriHUD:
                 estado_mon = [idx_mon_atual]
                 var_monitor = tk.StringVar(value=str(monitores[idx_mon_atual]["rotulo"]))
 
-                f_mon = tk.Frame(col_direita, bg=BG_MAIN, pady=6)
+                f_mon = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
                 f_mon.pack(fill="x")
                 tk.Label(
                     f_mon,
@@ -2131,7 +2320,7 @@ class CapriHUD:
                 estado_modo = [idx_modo_atual]
                 var_modo_visao = tk.StringVar(value=modos_visao[idx_modo_atual][1])
 
-                f_mv = tk.Frame(col_direita, bg=BG_MAIN, pady=6)
+                f_mv = tk.Frame(frame_sys, bg=BG_MAIN, pady=6)
                 f_mv.pack(fill="x")
                 tk.Label(
                     f_mv,
@@ -2184,6 +2373,7 @@ class CapriHUD:
             except Exception:
                 pass
             salvar_chaves_em_memoria()
+            salvar_apelidos()
             chaves_ia_finais = (
                 str(self.config.get("provedor_ia", "")).strip(),
                 str(self.config.get("gemini_api_key", "")).strip(),

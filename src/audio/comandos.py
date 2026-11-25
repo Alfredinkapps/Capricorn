@@ -300,18 +300,52 @@ def normalizar_frase(frase: str) -> str:
     texto = _REGEX_ESPACOS.sub(" ", texto)
     return texto.strip()
 
+APELIDOS_ATIVACAO_PADRAO: tuple[str, ...] = ("capri", "cap", "capricornio")
+_APELIDOS_ATIVACAO_ATIVOS: list[str] = list(APELIDOS_ATIVACAO_PADRAO)
+_REGEX_ATIVACAO: re.Pattern[str] = re.compile(r"\b(?:capricornio|capri|cap)\b")
+
+
+def atualizar_apelidos_ativacao(
+    apelidos: list[str] | tuple[str, ...] | str | None,
+) -> list[str]:
+    """Atualiza em tempo real as palavras de ativação por voz (wake words)."""
+    global _APELIDOS_ATIVACAO_ATIVOS, _REGEX_ATIVACAO
+
+    if isinstance(apelidos, str):
+        brutos = re.split(r"[,;\n]+", apelidos)
+    elif isinstance(apelidos, (list, tuple)):
+        brutos = [str(a) for a in apelidos]
+    else:
+        brutos = list(APELIDOS_ATIVACAO_PADRAO)
+
+    limpos: list[str] = []
+    vistos: set[str] = set()
+    for item in brutos:
+        termo = re.sub(r"\s+", " ", remover_acentos(item.strip().lower())).strip()
+        if len(termo) >= 2 and termo not in vistos:
+            vistos.add(termo)
+            limpos.append(termo)
+
+    if not limpos:
+        limpos = list(APELIDOS_ATIVACAO_PADRAO)
+
+    limpos.sort(key=len, reverse=True)
+    _APELIDOS_ATIVACAO_ATIVOS = limpos
+    padrao = "|".join(re.escape(a) for a in limpos)
+    _REGEX_ATIVACAO = re.compile(rf"\b(?:{padrao})\b")
+    return list(_APELIDOS_ATIVACAO_ATIVOS)
+
+
 def extrair_comando_apos_nome(frase: str) -> tuple[bool, str]:
-    """Detecta qualquer variação do nome Capri (incluindo 'cap') e separa o comando limpo."""
-    frase_norm = normalizar_frase(frase)
-    for _, regex_gatilho in _REGEX_GATILHOS_CAPRI:
-        match = regex_gatilho.search(frase_norm)
-        if match:
-            resto = frase_norm[match.end():].strip(" ,.!?-")
-            if not resto:
-                resto = frase_norm[:match.start()].strip(" ,.!?-")
-            palavras = resto.split()
-            while palavras and palavras[0] in PALAVRAS_SAUDACAO_INICIAL:
-                palavras.pop(0)
-            comando_limpo = " ".join(palavras).strip()
-            return True, comando_limpo
-    return False, ""
+    """Detecta qualquer apelido de ativação configurado e retorna (chamou, comando_restante)."""
+    texto_orig = unicodedata.normalize("NFC", (frase or "").strip())
+    if not texto_orig:
+        return False, ""
+
+    texto_sem_acento = remover_acentos(texto_orig.lower())
+    m = _REGEX_ATIVACAO.search(texto_sem_acento)
+    if not m:
+        return False, ""
+
+    resto = texto_orig[m.end():].lstrip(" ,.:;!?-")
+    return True, resto.strip()

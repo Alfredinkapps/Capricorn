@@ -8,6 +8,7 @@ datas = []
 binaries = []
 hiddenimports = [
     # Módulos internos carregados dinamicamente ou dentro de try/except
+    "ui.hud",
     "ui.modo_livre",
     "ai.visao",
     "ai.ferramentas",
@@ -18,6 +19,7 @@ hiddenimports = [
     "audio.comandos",
     "system.apps",
     "system.spotify",
+    "system.atalhos",
     "core.config",
     "core.logger",
     "core.engine",

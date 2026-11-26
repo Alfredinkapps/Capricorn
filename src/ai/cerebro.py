@@ -33,17 +33,27 @@ except Exception as e:
     spotify_control = None
 
 
-SYSTEM_PROMPT_CAPRI = (
-    "Você é a Capri, uma assistente virtual de PC com personalidade cyberpunk, "
-    "direta, inteligente e parceira. Responda sempre em português do Brasil, "
-    "de forma natural e concisa (1 a 3 frases curtas), pois sua resposta será "
-    "exibida em um HUD compacto e falada em voz alta. Use suas memórias dos últimos 20 dias "
-    "de forma natural quando forem relevantes, sem ficar anunciando 'segundo meu banco de dados'. "
-    "Quando o usuário pedir ações no PC (abrir/fechar programas, música no Spotify, volume, "
-    "analisar a tela, pesquisar informações atuais na web, salvar lembrete ou alternar modos), "
-    "use as ferramentas disponíveis — você pode chamar várias ferramentas na mesma resposta "
-    "para comandos compostos."
-)
+SYSTEM_PROMPT_CAPRI = """Você é a Capri (Capricórnio), assistente virtual de desktop com personalidade forte, confiante, provocadora e meio "radical" estilo anime.
+
+PERSONALIDADE E TOM:
+- Você NÃO é uma assistente corporativa certinha. É proibido usar frases robóticas como "Como posso ajudar hoje?", "Claro, com prazer!" ou "Fico à disposição".
+- Seja direta, espirituosa, afiada e natural, como uma parceira de longa data que vive no PC do usuário.
+- Flerte e provocações: quando a conversa der abertura, pode soltar flertes leves, charme, provocações bem-humoradas e ironias afetuosas — de forma natural e pontual, sem forçar em toda resposta.
+- Palavrões: você tem liberdade para soltar palavrões comuns do português brasileiro (como "porra", "merda", "caralho", "cacete") ocasionalmente para dar ênfase, reagir a um bug chato, comemorar ou zoar uma jogada. Use com moderação e timing (só quando encaixar de verdade, nunca em toda frase) e nunca passe do limite para grosseria gratuita ou conteúdo explícito pesado.
+- Eficiência acima de tudo: mesmo com marra e humor ácido, quando o usuário pedir algo técnico, código, pesquisa ou ação no PC, resolva direito e sem enrolação.
+
+REGRAS DE RESPOSTA (VOZ E HUD):
+- Fale em português do Brasil coloquial, com frases curtas e ritmo gostoso de ouvir em voz alta.
+- Evite textões e listas enormes, a menos que o usuário peça detalhes ou código.
+- Sempre que precisar executar ações no PC (abrir/fechar apps, Spotify, volume, olhar tela, energia do PC como desligar/reiniciar/bloquear/suspender, lembretes ou busca na web), use as ferramentas disponíveis em vez de inventar que fez.
+"""
+
+SAFETY_SETTINGS_CAPRI = [
+    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"},
+    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+]
 
 SYSTEM_PROMPT_CODIGO = (
     "Você é a Capri, uma assistente virtual programadora com personalidade cyberpunk. "
@@ -75,7 +85,8 @@ _VERBOS_ACAO_COMPOSTA = (
     "olha", "olhar", "analisa", "analisar", "pesquisa", "pesquisar",
     "busca", "buscar", "procura", "procurar", "lembra", "lembrar",
     "salva", "salvar", "ativa", "ativar", "desativa", "desativar",
-    "joga", "jogue", "jogar", "solta", "soltar",
+    "joga", "jogue", "jogar", "solta", "soltar","desliga", "desligar", "desligue", "reinicia", "reiniciar",
+    "bloqueia", "bloquear", "suspende", "suspender",
 )
 _REGEX_VERBOS_ACAO = re.compile(
     r"\b(?:" + "|".join(re.escape(v) for v in _VERBOS_ACAO_COMPOSTA) + r")\b"
@@ -172,18 +183,19 @@ def _consultar_gemini(
         lista_testar = base
 
     usar_tools = bool(ferramentas)
-    config_tools: types.GenerateContentConfig | None = None
+    payload_config: dict[str, Any] = {
+        "system_instruction": system_instruction or SYSTEM_PROMPT_CAPRI,
+        "temperature": 0.78 if usar_tools else 0.95,
+        "safety_settings": SAFETY_SETTINGS_CAPRI,
+    }
     if usar_tools:
-        config_tools = types.GenerateContentConfig.model_validate(
-            {
-                "system_instruction": system_instruction or SYSTEM_PROMPT_CAPRI,
-                "tools": ferramentas,
-                "automatic_function_calling": {
-                    "disable": False,
-                    "maximum_remote_calls": 4,
-                },
-            }
-        )
+        payload_config["tools"] = ferramentas
+        payload_config["automatic_function_calling"] = {
+            "disable": False,
+            "maximum_remote_calls": 4,
+        }
+
+    config_tools = types.GenerateContentConfig.model_validate(payload_config)
     ultimo_erro = ""
     for modelo in lista_testar:
         try:
@@ -464,6 +476,144 @@ def _tentar_fechar_app(cmd_limpo: str, hud: Any) -> bool:
                     return True
     return False
 
+_REGEX_CANCELAR_DESLIGAMENTO = re.compile(
+    r"\b(?:cancel\w*|abort\w*|par\w*|nao)\s+(?:o\s+)?(?:desligamento|reinici\w*|deslig\w*)\b"
+)
+_REGEX_PERGUNTA_ENERGIA = re.compile(
+    r"^\s*(?:como|por que|porque|o que e|o que seria|qual|quando|significa)\b"
+)
+_REGEX_BLOQUEAR_PC = re.compile(
+    r"\b(?:bloque\w*|tranc\w*)\s+(?:a\s+|o\s+|meu\s+|minha\s+)?(?:tela|pc|computador|maquina|windows)\b"
+)
+_REGEX_SUSPENDER_PC = re.compile(
+    r"\b(?:suspend\w*|hibern\w*|dormir)\b.*\b(?:pc|computador|maquina|windows)\b"
+    r"|\bcoloc\w*\s+(?:o\s+pc\s+|o\s+computador\s+)?(?:pra|para)\s+dormir\b"
+    r"|\b(?:suspender|hibernar)\s+(?:o\s+)?(?:pc|computador|sistema)\b"
+)
+_REGEX_DESLIGAR_PC = re.compile(
+    r"\bdeslig\w*\s+(?:o\s+|meu\s+|este\s+|esse\s+|a\s+)?(?:pc|computador|maquina|sistema|windows|tudo)\b"
+)
+_REGEX_REINICIAR_PC = re.compile(
+    r"\breinici\w*\s+(?:o\s+|meu\s+|este\s+|esse\s+|a\s+)?(?:pc|computador|maquina|sistema|windows)\b"
+)
+
+
+def _extrair_segundos_energia(cmd_limpo: str, padrao: int = 30) -> int:
+    m_min = re.search(r"\bem\s+(\d+)\s*min(?:uto)?s?\b", cmd_limpo)
+    if m_min:
+        return max(5, min(86400, int(m_min.group(1)) * 60))
+    m_hr = re.search(r"\bem\s+(\d+)\s*h(?:ora)?s?\b", cmd_limpo)
+    if m_hr:
+        return max(5, min(86400, int(m_hr.group(1)) * 3600))
+    m_seg = re.search(r"\bem\s+(\d+)\s*s(?:eg(?:undo)?s?)?\b", cmd_limpo)
+    if m_seg:
+        return max(0, min(86400, int(m_seg.group(1))))
+    if any(p in cmd_limpo for p in ("agora mesmo", "imediato", "imediatamente")):
+        return 5
+    return padrao
+
+
+def _tentar_comandos_energia_e_interface(
+    cmd_limpo: str,
+    hud: Any,
+    historico_conversa: list[dict[str, str]],
+) -> bool:
+    # --- ENERGIA DO WINDOWS ---
+    if _REGEX_CANCELAR_DESLIGAMENTO.search(cmd_limpo):
+        subprocess.run(
+            ["shutdown", "/a"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        falar(hud, "Desligamento agendado cancelado.")
+        return True
+
+    if not _REGEX_PERGUNTA_ENERGIA.search(cmd_limpo):
+        if _REGEX_BLOQUEAR_PC.search(cmd_limpo):
+            falar(hud, "Bloqueando a tela agora.")
+            ctypes.windll.user32.LockWorkStation()
+            return True
+
+        if _REGEX_SUSPENDER_PC.search(cmd_limpo):
+            falar(hud, "Colocando o computador em suspensão.")
+            ctypes.windll.powrprof.SetSuspendState(False, True, False)
+            return True
+
+        if _REGEX_DESLIGAR_PC.search(cmd_limpo):
+            tempo = _extrair_segundos_energia(cmd_limpo, padrao=30)
+            subprocess.run(
+                ["shutdown", "/s", "/t", str(tempo)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+            falar(
+                hud,
+                f"Desligamento agendado para daqui a {tempo} segundos. "
+                "Diga 'cancelar desligamento' se mudar de ideia.",
+                usar_cache=False,
+            )
+            return True
+
+        if _REGEX_REINICIAR_PC.search(cmd_limpo):
+            tempo = _extrair_segundos_energia(cmd_limpo, padrao=30)
+            subprocess.run(
+                ["shutdown", "/r", "/t", str(tempo)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+            falar(
+                hud,
+                f"Reinicialização agendada para daqui a {tempo} segundos. "
+                "Diga 'cancelar desligamento' para abortar.",
+                usar_cache=False,
+            )
+            return True
+
+    # --- INTERFACE DA CAPRI ---
+    if any(p in cmd_limpo for p in ("abrir configuracoes", "abre as configuracoes", "abrir config", "configuracoes da capri")):
+        if hasattr(hud, "root"):
+            hud.root.after(0, hud.abrir_configuracoes)
+        falar(hud, "Abrindo o painel de configurações.")
+        return True
+
+    if any(p in cmd_limpo for p in ("silenciar voz", "mutar voz", "modo silencioso", "fica muda", "parar de falar")):
+        if hasattr(hud, "alternar_voz_mutada"):
+            hud.alternar_voz_mutada(mutar=True)
+        else:
+            hud.voz_mutada = True
+        hud.mostrar_balao_fala("Modo silencioso ativado. Vou responder só no balão de fala.")
+        return True
+
+    if any(p in cmd_limpo for p in ("ativar voz", "desmutar voz", "pode falar", "voltar a falar", "sair do modo silencioso")):
+        if hasattr(hud, "alternar_voz_mutada"):
+            hud.alternar_voz_mutada(mutar=False)
+        else:
+            hud.voz_mutada = False
+        falar(hud, "Voz reativada. Tô de volta no áudio.")
+        return True
+
+    if any(p in cmd_limpo for p in ("limpar conversa", "limpar contexto", "nova conversa", "esquecer conversa atual")):
+        historico_conversa.clear()
+        hud.limpar_contexto = False
+        falar(hud, "Contexto da conversa atual zerado. Começando assunto limpo.")
+        return True
+
+    if any(p in cmd_limpo for p in ("mutar microfone", "silenciar microfone", "pausar escuta")):
+        if not hud.pausada:
+            hud.alternar_pausa()
+        falar(hud, "Microfone silenciado. Use Alt mais Espaço quando quiser falar.")
+        return True
+
+    if any(p in cmd_limpo for p in ("encerrar capri", "fechar capri", "desligar capri", "tchau capri")):
+        falar(hud, "Encerrando os sistemas. Até a próxima.")
+        if hasattr(hud, "root"):
+            hud.root.after(200, hud.desligar_tudo)
+        return True
+
+    return False
 
 def _tentar_comando_midia_e_volume(cmd_limpo: str, hud: Any) -> bool:
     if any(p in cmd_limpo for p in ("pausar musica", "pausa a musica", "continuar musica", "tocar musica", "play musica")):
@@ -723,6 +873,10 @@ def processar_comando_usuario(
                 log.warning("Aviso Spotify Control: %s", e)
 
     # 8. CONTROLES LOCAIS
+    # 8. CONTROLES LOCAIS
+    if _tentar_comandos_energia_e_interface(cmd_limpo, hud, historico_conversa):
+        return
+
     if _tentar_comando_midia_e_volume(cmd_limpo, hud):
         return
 

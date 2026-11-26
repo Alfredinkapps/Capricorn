@@ -16,6 +16,7 @@ from ai.cerebro import obter_lista_modelos_rapidos, processar_comando_usuario
 from ai.visao import ObservadorTela
 from ai.memoria import MemoriaCapri
 from agents.reigns import AgenteReigns
+from system.atalhos import GerenciadorAtalhosGlobais
 
 log = obter_logger("engine")
 
@@ -118,17 +119,21 @@ def loop_cerebro_capri(hud: CapriHUD, estado: dict, lock: threading.Lock):
 
             estado["client"] = client
             estado["modelos"] = modelos
-            if primeira_inicializacao:
-                estado["historico"] = []
             estado["pronto"] = True
 
             if primeira_inicializacao:
-                with lock:
-                    falar(hud, "Sistemas da Capri online. Módulos de controle e pesquisa carregados.")
+                if getattr(hud, "iniciar_em_segundo_plano", False):
+                    log.info("Capri iniciada silenciosamente em segundo plano (--startup).")
+                else:
+                    with lock:
+                        falar(
+                            hud,
+                            "Sistemas da Capri online. Módulos de controle e pesquisa carregados.",
+                        )
 
                 # Acompanhamento proativo de eventos citados nos últimos 20 dias
                 memoria = estado.get("memoria")
-                if memoria:
+                if memoria and not getattr(hud, "iniciar_em_segundo_plano", False):
                     evento_pendente = memoria.obter_evento_para_perguntar()
                     if evento_pendente:
                         time.sleep(1.5)
@@ -198,9 +203,9 @@ def loop_cerebro_capri(hud: CapriHUD, estado: dict, lock: threading.Lock):
             time.sleep(2)
 
 
-def iniciar_capri():
+def iniciar_capri(iniciar_em_segundo_plano: bool = False):
     """Inicializa os subsistemas, sobe as threads de controle e abre o HUD."""
-    app_hud = CapriHUD()
+    app_hud = CapriHUD(iniciar_em_segundo_plano=iniciar_em_segundo_plano)
     estado_compartilhado = {
         "client": None,
         "modelos": [],
@@ -219,7 +224,34 @@ def iniciar_capri():
     agente_reigns = AgenteReigns(app_hud, estado_compartilhado, lock_execucao, falar, memoria=memoria)
     estado_compartilhado["agente_reigns"] = agente_reigns
 
+    def _ativar_escuta_atalho():
+        app_hud.forcar_escuta_voz = True
+
+    def _abrir_chat_atalho():
+        def _executar():
+            app_hud.mostrar_da_bandeja()
+            try:
+                app_hud.root.focus_force()
+            except Exception:
+                pass
+            app_hud._focar_entrada_pesquisa()
+
+        try:
+            app_hud.root.after(0, _executar)
+        except Exception:
+            pass
+
+    atalhos = GerenciadorAtalhosGlobais(
+        ao_pressionar_falar=_ativar_escuta_atalho,
+        ao_pressionar_chat=_abrir_chat_atalho,
+    )
+    atalhos.iniciar()
+
     def _encerrar_subsistemas():
+        try:
+            atalhos.parar()
+        except Exception:
+            pass
         try:
             agente_reigns.parar()
         except Exception:

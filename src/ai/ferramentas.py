@@ -362,6 +362,65 @@ def criar_ferramentas_capri(
 
         return f"Modo '{modo}' desconhecido. Opções: observador, modo_livre ou reigns."
 
+    def controlar_energia_pc(acao: str, segundos: int = 30) -> str:
+            """
+            Controla a energia do computador Windows do usuário (desligar, reiniciar, bloquear, suspender ou cancelar desligamento).
+            acao: 'desligar', 'reiniciar', 'cancelar', 'bloquear' ou 'suspender'.
+            segundos: tempo de espera em segundos antes de desligar/reiniciar (padrão 30; use 5 para imediato).
+            """
+            acao_limpa = remover_acentos((acao or "").strip().lower())
+            tempo = max(0, min(86400, int(segundos)))
+            hud.atualizar_estado("EXECUTANDO AÇÃO...", "#FF0055", f"Energia do PC: {acao_limpa}...")
+    
+            if acao_limpa in ("cancelar", "abortar", "cancelar_desligamento"):
+                subprocess.run(
+                    ["shutdown", "/a"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                log.info("[Tool] controlar_energia_pc -> cancelar")
+                return "Desligamento ou reinicialização agendada cancelada."
+    
+            if acao_limpa in ("bloquear", "trancar", "lock"):
+                log.info("[Tool] controlar_energia_pc -> bloquear")
+                ctypes.windll.user32.LockWorkStation()
+                return "Tela do computador bloqueada."
+    
+            if acao_limpa in ("suspender", "hibernar", "dormir"):
+                log.info("[Tool] controlar_energia_pc -> suspender")
+                ctypes.windll.powrprof.SetSuspendState(False, True, False)
+                return "Computador colocado em suspensão."
+    
+            if acao_limpa in ("desligar", "shutdown"):
+                subprocess.run(
+                    ["shutdown", "/s", "/t", str(tempo)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                log.info("[Tool] controlar_energia_pc -> desligar (%ds)", tempo)
+                return (
+                    f"Desligamento agendado para daqui a {tempo} segundos. "
+                    "Diga 'cancelar desligamento' se mudar de ideia."
+                )
+    
+            if acao_limpa in ("reiniciar", "restart", "reboot"):
+                subprocess.run(
+                    ["shutdown", "/r", "/t", str(tempo)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                log.info("[Tool] controlar_energia_pc -> reiniciar (%ds)", tempo)
+                return (
+                    f"Reinicialização agendada para daqui a {tempo} segundos. "
+                    "Diga 'cancelar desligamento' para abortar."
+                )
+    
+            return "Ação de energia inválida. Use: desligar, reiniciar, cancelar, bloquear ou suspender."
+        
+    
     def obter_data_hora_atual() -> str:
         """Retorna a data e a hora atuais do computador do usuário."""
         agora = datetime.now()
@@ -377,9 +436,12 @@ def criar_ferramentas_capri(
         analisar_tela_atual,
         salvar_lembrete,
         alternar_modo_capri,
+        controlar_energia_pc,
         obter_data_hora_atual,
     ]
     if bool(hud.config.get("busca_web_ativa", True)):
         ferramentas.append(pesquisar_web)
 
     return ferramentas
+
+    

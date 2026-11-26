@@ -21,27 +21,32 @@ os.makedirs(PASTA_DATA, exist_ok=True)
 os.makedirs(PASTA_CACHE, exist_ok=True)
 
 
-def configurar_inicializacao_windows(ativar: bool = True) -> None:
-    """Registra ou remove a Capri da inicialização automática do Windows."""
-    chave_reg = r"Software\Microsoft\Windows\CurrentVersion\Run"
-    nome_app = "CapriAssistant"
+def configurar_inicializacao_windows(ativar: bool) -> bool:
+    """Registra ou remove a Capri na inicialização do Windows em modo silencioso e sem terminal."""
+    caminho_chave = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    nome_valor = "Capri"
     try:
-        if getattr(sys, "frozen", False):
-            caminho_exec = f'"{sys.executable}"'
-        else:
-            script_principal = os.path.join(PASTA_PROJETO, "src", "main.py")
-            caminho_exec = f'"{sys.executable}" "{script_principal}"'
-
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, chave_reg, 0, winreg.KEY_ALL_ACCESS) as key:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, caminho_chave, 0, winreg.KEY_SET_VALUE
+        ) as chave:
             if ativar:
-                winreg.SetValueEx(key, nome_app, 0, winreg.REG_SZ, caminho_exec)
+                if getattr(sys, "frozen", False):
+                    comando = f'"{sys.executable}" --startup'
+                else:
+                    pasta_py = os.path.dirname(sys.executable)
+                    pythonw = os.path.join(pasta_py, "pythonw.exe")
+                    executavel = pythonw if os.path.exists(pythonw) else sys.executable
+                    script_main = os.path.join(PASTA_PROJETO, "src", "main.py")
+                    comando = f'"{executavel}" "{script_main}" --startup'
+                winreg.SetValueEx(chave, nome_valor, 0, winreg.REG_SZ, comando)
             else:
                 try:
-                    winreg.DeleteValue(key, nome_app)
+                    winreg.DeleteValue(chave, nome_valor)
                 except FileNotFoundError:
                     pass
-    except Exception as e:
-        print(f"[Aviso Registro Windows]: {e}")
+        return True
+    except Exception:
+        return False
 
 
 def _migrar_config_antigo_se_necessario() -> None:
@@ -65,7 +70,7 @@ def carregar_configuracoes() -> dict[str, Any]:
         "fish_api_key": "",
         "fish_voice_id": "",
         "spotify_client_id": "",
-        "spotify_redirect_uri": "[http://127.0.0.1:8888/callback](http://127.0.0.1:8888/callback)",
+        "spotify_redirect_uri": "http://127.0.0.1:8888/callback",
         "iniciar_com_windows": True,
         "pose_padrao": "Padrao",
         "modo_recorte_transparente": False,

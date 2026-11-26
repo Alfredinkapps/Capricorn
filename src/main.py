@@ -10,5 +10,6 @@ from core.engine import iniciar_capri
 
 
 if __name__ == "__main__":
+    modo_startup = "--startup" in sys.argv or "--background" in sys.argv
     configurar_logs()
-    iniciar_capri()
+    iniciar_capri(iniciar_em_segundo_plano=modo_startup)

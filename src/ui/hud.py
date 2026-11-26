@@ -296,10 +296,11 @@ class CapriHUD:
     TEXT_WHITE = "#F1F5F9"
     TEXT_GRAY = "#A3969C"
     TEXT_PINK = "#F06A82"
-    VERSAO_HUD = "v0.3.0"
+    VERSAO_HUD = "v0.3.1"
 
-    def __init__(self):
-        self.config: dict[str, Any] = escanear_e_atualizar_apps(carregar_configuracoes())
+    def __init__(self, iniciar_em_segundo_plano: bool = False):
+        self.iniciar_em_segundo_plano = iniciar_em_segundo_plano
+        self.config = carregar_configuracoes()
         try:
             from audio.comandos import atualizar_apelidos_ativacao
             atualizar_apelidos_ativacao(
@@ -385,6 +386,8 @@ class CapriHUD:
         )
         if not tem_alguma_chave:
             self.root.after(600, self.abrir_configuracoes)
+            if self.iniciar_em_segundo_plano:
+                self.root.withdraw()
 
     def _criar_botao_quadrado(
         self,

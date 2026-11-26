@@ -1,77 +1,85 @@
+import logging
 import os
 import sys
-import logging
 import threading
 from logging.handlers import RotatingFileHandler
 
-from core.config import PASTA_DATA
+if getattr(sys, "frozen", False):
+    _PASTA_BASE = os.path.dirname(sys.executable)
+else:
+    _PASTA_BASE = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
 
-ARQUIVO_LOG = os.path.join(PASTA_DATA, "capri.log")
-_CONFIGURADO = False
+PASTA_DADOS = os.path.join(_PASTA_BASE, "data")
+ARQUIVO_LOG = os.path.join(PASTA_DADOS, "capri.log")
+
+_LOGS_CONFIGURADOS = False
 
 
 def configurar_logs(nivel: int = logging.INFO) -> logging.Logger:
-    """Configura o sistema global de logs da Capri (arquivo rotativo + terminal)."""
-    global _CONFIGURADO
-    logger_raiz = logging.getLogger("capri")
+    """Configura o logger raiz da Capri (arquivo rotativo + console quando houver terminal)."""
+    global _LOGS_CONFIGURADOS
 
-    if _CONFIGURADO:
-        return logger_raiz
+    logger = logging.getLogger("capri")
+    if _LOGS_CONFIGURADOS and logger.handlers:
+        return logger
 
-    os.makedirs(PASTA_DATA, exist_ok=True)
-    logger_raiz.setLevel(nivel)
-    logger_raiz.propagate = False
+    os.makedirs(PASTA_DADOS, exist_ok=True)
+    logger.setLevel(nivel)
+    logger.propagate = False
+    logger.handlers.clear()
 
-    formato = logging.Formatter(
-        fmt="%(asctime)s | %(levelname)-7s | %(name)-18s | %(message)s",
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)-8s | %(name)-20s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # 1. Saída em arquivo rotativo (máx 2 MB por arquivo, até 3 backups)
-    handler_arquivo = RotatingFileHandler(
+    arquivo_handler = RotatingFileHandler(
         ARQUIVO_LOG,
         maxBytes=2 * 1024 * 1024,
         backupCount=3,
         encoding="utf-8",
     )
-    handler_arquivo.setLevel(nivel)
-    handler_arquivo.setFormatter(formato)
-    logger_raiz.addHandler(handler_arquivo)
+    arquivo_handler.setFormatter(formatter)
+    logger.addHandler(arquivo_handler)
 
-    # 2. Saída no terminal (protegido para builds .exe sem console)
-    if sys.stdout is not None:
-        handler_console = logging.StreamHandler(sys.stdout)
-        handler_console.setLevel(nivel)
-        handler_console.setFormatter(formato)
-        logger_raiz.addHandler(handler_console)
+    # Em pythonw.exe ou Capri.exe (console=False), sys.stderr pode ser None
+    if sys.stderr is not None:
+        console_handler = logging.StreamHandler(sys.stderr)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
-    # 3. Reduz ruído de bibliotecas externas
-    for lib_ruidosa in ("urllib3", "httpx", "httpcore", "PIL", "google", "comtypes"):
-        logging.getLogger(lib_ruidosa).setLevel(logging.WARNING)
-
-    # 4. Captura crashes inesperados na thread principal e em threads secundárias
-    def _tratar_excecao_global(exc_type, exc_value, exc_traceback):
+    def _tratar_excecao(exc_type, exc_value, exc_traceback):
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
-        logger_raiz.critical("Erro fatal não tratado", exc_info=(exc_type, exc_value, exc_traceback))
+        logger.critical(
+            "Erro fatal não tratado",
+            exc_info=(exc_type, exc_value, exc_traceback),
+        )
 
     def _tratar_excecao_thread(args):
-        logger_raiz.critical(
-            f"Erro não tratado na thread '{args.thread.name}'",
+        if issubclass(args.exc_type, SystemExit):
+            return
+        logger.critical(
+            "Erro não tratado na thread '%s'",
+            getattr(args.thread, "name", "desconhecida"),
             exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
         )
 
-    sys.excepthook = _tratar_excecao_global
+    sys.excepthook = _tratar_excecao
     threading.excepthook = _tratar_excecao_thread
 
-    _CONFIGURADO = True
-    logger_raiz.info("=== Sessão da Capri iniciada (log em %s) ===", ARQUIVO_LOG)
-    return logger_raiz
+    _LOGS_CONFIGURADOS = True
+    logger.info("=== Sessão da Capri iniciada (log em %s) ===", ARQUIVO_LOG)
+    return logger
 
 
-def obter_logger(nome_modulo: str) -> logging.Logger:
-    """Retorna um logger filho padronizado (ex: 'capri.engine', 'capri.reigns')."""
-    if not _CONFIGURADO:
-        configurar_logs()
-    return logging.getLogger(f"capri.{nome_modulo}")
+def obter_logger(nome: str | None = None) -> logging.Logger:
+    """Retorna o logger raiz da Capri ou um sub-logger (ex: 'capri.voz')."""
+    if not nome:
+        return logging.getLogger("capri")
+    if nome.startswith("capri"):
+        return logging.getLogger(nome)
+    return logging.getLogger(f"capri.{nome}")
